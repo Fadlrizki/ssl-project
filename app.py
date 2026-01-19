@@ -256,12 +256,19 @@ if menu == "ARA Scanner":
         with col1:
             st.subheader("ARA Candidate")
             ara = find_ara_candidates(ticker)
-            st.dataframe(pd.DataFrame([ara])) if ara else st.info("Tidak memenuhi")
+            if ara:
+                st.dataframe(pd.DataFrame([ara]))
+            else:
+                st.info("Tidak memenuhi")
+
 
         with col2:
             st.subheader("Continuation Rate")
             cont = continuation_rate(ticker)
-            st.dataframe(pd.DataFrame([cont])) if cont else st.info("Data tidak cukup")
+            if cont:
+                st.dataframe(pd.DataFrame([cont]))
+            else:
+                st.info("Data tidak cukup")
 
         st.subheader("Raw Data (15 Hari)")
         raw = show_raw_data(ticker)
