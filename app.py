@@ -1,182 +1,139 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
 import yfinance as yf
 
-st.set_page_config(
-    page_title="ARA Scanner",
-    layout="wide"
-)
+st.set_page_config("IDX Scanner", layout="wide")
 
-# =========================
-# Utilities
-# =========================
-def scalar(x):
-    return float(x.item()) if hasattr(x, "item") else float(x)
-
+# ======================
+# DATA
+# ======================
 @st.cache_data(ttl=3600)
-def load_tickers():
-    df = pd.read_excel("daftar_saham.xlsx")
-    df.columns = df.columns.str.strip()
-
-    if "Kode" not in df.columns:
-        st.error("Kolom 'Kode' tidak ditemukan di daftar_saham.xlsx")
-        st.stop()
-
-    # pastikan format Yahoo Finance
-    df["yf_ticker"] = df["Kode"].astype(str).str.upper() + ".JK"
-
-    return df
-
-@st.cache_data(ttl=3600)
-def download_data(ticker, period):
-    return yf.download(ticker, period=period, progress=False)
-
-# =========================
-# Core Logic
-# =========================
-def find_ara_candidates(ticker, lookback=60):
-    df = download_data(ticker, f"{lookback}d")
-
-    if df.empty or len(df) < 25:
-        return None
-
-    df["AvgVol20"] = df["Volume"].rolling(20).mean()
-    today = df.iloc[-1]
-
-    open_p  = scalar(today["Open"])
-    close_p = scalar(today["Close"])
-    high_p  = scalar(today["High"])
-    vol     = scalar(today["Volume"])
-    avgvol  = scalar(today["AvgVol20"])
-
-    if avgvol == 0 or pd.isna(avgvol):
-        return None
-
-    ret_1d = (close_p - open_p) / open_p
-
-    if (
-        0.05 <= ret_1d <= 0.09 and
-        close_p >= 0.95 * high_p and
-        vol >= 1.5 * avgvol and
-        close_p > open_p
-    ):
-        return {
-            "Ticker": ticker,
-            "Return_%": round(ret_1d * 100, 2),
-            "Volume_Ratio": round(vol / avgvol, 2),
-            "Close_vs_High_%": round(close_p / high_p * 100, 2),
-            "Close": close_p
-        }
-
-    return None
-
-
-def continuation_rate(ticker, lookback=120):
-    df = download_data(ticker, f"{lookback}d")
-
-    if df.empty or len(df) < 30:
-        return None
-
-    df["AvgVol20"] = df["Volume"].rolling(20).mean()
-    results = []
-
-    for i in range(20, len(df) - 1):
-        d = df.iloc[i]
-        n = df.iloc[i + 1]
-
-        open_p  = scalar(d["Open"])
-        close_p = scalar(d["Close"])
-        high_p  = scalar(d["High"])
-        vol     = scalar(d["Volume"])
-        avgvol  = scalar(d["AvgVol20"])
-
-        if avgvol == 0 or pd.isna(avgvol):
-            continue
-
-        ret_1d = (close_p - open_p) / open_p
-
-        if (
-            0.05 <= ret_1d <= 0.09 and
-            close_p >= 0.95 * high_p and
-            vol >= 1.5 * avgvol
-        ):
-            next_ret = (
-                scalar(n["Close"]) - scalar(n["Open"])
-            ) / scalar(n["Open"])
-
-            results.append(next_ret >= 0.03)
-
-    if not results:
-        return None
-
-    return {
-        "Ticker": ticker,
-        "Sample": len(results),
-        "Continuation_%": round(sum(results) / len(results) * 100, 1)
-    }
-
-
-def show_raw_data(ticker, days=15):
-    df = download_data(ticker, f"{days}d")
-
+def fetch_data(ticker, period):
+    df = yf.download(f"{ticker}.JK", period=period, progress=False)
     if df.empty:
         return None
-
     if isinstance(df.columns, pd.MultiIndex):
         df.columns = df.columns.get_level_values(0)
+    return df.dropna()
 
-    df["Return_%"] = (df["Close"] - df["Open"]) / df["Open"] * 100
-    df["Range_%"] = (df["High"] - df["Low"]) / df["Open"] * 100
-    df["Close_vs_High_%"] = df["Close"] / df["High"] * 100
-    df["AvgVol20"] = df["Volume"].rolling(20).mean()
-    df["Volume_Ratio"] = df["Volume"] / df["AvgVol20"].replace(0, pd.NA)
+# ======================
+# INDICATORS
+# ======================
+ema = lambda s, n: s.ewm(span=n, adjust=False).mean()
 
-    df = df.sort_index(ascending=False)
-    return df.round(2)
+def rsi(s, p=14):
+    d = s.diff()
+    g, l = d.clip(lower=0), -d.clip(upper=0)
+    rs = g.rolling(p).mean() / (l.rolling(p).mean() + 1e-9)
+    return 100 - 100 / (1 + rs)
 
-# =========================
-# UI
-# =========================
-st.title("📈 ARA Scanner Indonesia")
+def fibo(df, n=30):
+    r = df.tail(n)
+    lo, hi = r.Low.min(), r.High.max()
+    return {
+        "Buy_Low": hi - 0.618 * (hi - lo),
+        "Buy_High": hi - 0.382 * (hi - lo),
+        "TP1": hi + 0.272 * (hi - lo),
+        "TP2": hi + 0.618 * (hi - lo),
+    }
 
-df_tickers = load_tickers()
+# ======================
+# PAGE: RALLY FIBO (HOME)
+# ======================
+def page_rally_fibo():
+    st.title("📈 Broker Summary")
 
-selected_code = st.selectbox(
-    "Pilih Kode Saham",
-    df_tickers["Kode"]
-)
+    
+    STOCKS = ["YUPI","ISAT","BREN","SMDM","SILO","STAR","AVIA","INTP","CNMA","TLKM",
+    "BOGA","ADMF","TALF","KLBF","BDMN","BNII","BNGA","MMLP","JPFA","PWON",
+    "BELL","BBHI","KPIG","SMAR","BBSI","SRAJ","ASII","MTEL","BPTR","NOBU",
+    "INDF","UNTR","SONA","ERTX","BACA","TRJA","PTRO","FORU","BMRI","PZZA",
+    "SDPC","YPAS","TARA","JSMR","GTSI","INKP","BABP","MBAP","PGEO","NASA",
+    "POLA","BRMS","KKGI","IPTV","MAIN","MBMA","RIGS","BUVA","HRME","CITY",
+    "BBCA","ESTI","ABMM","CTRA","IBFN","TPIA","BBNI","SMGR","MITI","BBRI",
+    "AISA","MARK","ENAK","PNSE","MAXI","IPOL","PANI","INDY","MGLV","BBYB",
+    "SULI","JKON","TOOL","MTFN","IPCM","PKPK","DRMA","MPMX","APLN","JGLE",
+    "CDIA","BHIT"]
+    out = []
 
-ticker = df_tickers.loc[
-    df_tickers["Kode"] == selected_code,
-    "yf_ticker"
-].iloc[0]
+    if st.button("🔍 Scan Rally Fibo"):
+        for s in STOCKS:
+            df = fetch_data(s, "6mo")
+            if df is None or len(df) < 60:
+                continue
 
-st.caption(f"📡 Fetching data: {ticker}")
+            df["EMA13"], df["EMA21"], df["EMA50"] = ema(df.Close,13), ema(df.Close,21), ema(df.Close,50)
+            df["RSI"] = rsi(df.Close)
 
-if st.button("🔍 Analyze"):
-    col1, col2 = st.columns(2)
+            c, p = df.iloc[-1], df.iloc[-2]
 
-    with col1:
-        st.subheader("ARA Candidate (Last Day)")
-        ara = find_ara_candidates(ticker)
-        if ara:
-            st.dataframe(pd.DataFrame([ara]))
+            if (
+                c.Close > c.EMA13 > c.EMA21 > c.EMA50 and
+                35 <= c.RSI <= 55 and c.RSI > p.RSI
+            ):
+                out.append({
+                    "Stock": s,
+                    "Close": round(c.Close,2),
+                    "RSI": round(c.RSI,1),
+                    **{k: round(v,2) for k,v in fibo(df).items()}
+                })
+
+        if out:
+            st.dataframe(pd.DataFrame(out), use_container_width=True)
         else:
-            st.info("Tidak memenuhi kriteria ARA")
+            st.warning("Tidak ada kandidat")
 
-    with col2:
-        st.subheader("Continuation Rate")
-        cont = continuation_rate(ticker)
-        if cont:
-            st.dataframe(pd.DataFrame([cont]))
-        else:
-            st.info("Data tidak cukup")
+# ======================
+# PAGE: ARA SCANNER
+# ======================
+def page_ara():
+    st.title("⚡ ARA Scanner")
 
-    st.subheader("Raw Price Data (15 Hari)")
-    raw = show_raw_data(ticker)
-    if raw is not None:
-        cols = [
-            "Open", "High", "Low", "Close",
-            "Volume", "Return_%", "Close_vs_High_%", "Volume_Ratio"
-        ]
-        st.dataframe(raw[cols])
+    ticker = st.selectbox("Kode Saham", ["GTSI","BUVA","BACA","BRMS","BBCA"])
+    df = fetch_data(ticker, "60d")
+
+    if df is None or len(df) < 25:
+        st.warning("Data tidak cukup")
+        return
+
+    df["AvgVol20"] = df.Volume.rolling(20).mean()
+    t = df.iloc[-1]
+
+    ret = (t.Close - t.Open) / t.Open
+
+    if (
+        0.05 <= ret <= 0.09 and
+        t.Close >= 0.95 * t.High and
+        t.Volume >= 1.5 * t.AvgVol20
+    ):
+        st.success("✅ Kandidat ARA")
+        st.metric("Return %", round(ret*100,2))
+        st.metric("Volume Ratio", round(t.Volume / t.AvgVol20,2))
+    else:
+        st.info("❌ Tidak memenuhi ARA")
+
+    st.subheader("Raw Data (15 hari)")
+    st.dataframe(df.tail(15).sort_index(ascending=False))
+
+# ======================
+# SIDEBAR ROUTER
+# ======================
+st.sidebar.title("📊 Menu")
+
+if "page" not in st.session_state:
+    st.session_state.page = "Broker Summary"
+
+if st.sidebar.button("📈 Broker Summary"):
+    st.session_state.page = "Broker Summary"
+
+if st.sidebar.button("⚡ ARA Scanner"):
+    st.session_state.page = "ARA"
+
+# ======================
+# PAGE ROUTING
+# ======================
+if st.session_state.page == "Broker Summary":
+    page_rally_fibo()
+else:
+    page_ara()
