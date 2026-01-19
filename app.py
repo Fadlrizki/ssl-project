@@ -42,7 +42,7 @@ def fibo(df, n=30):
 # PAGE: RALLY FIBO (HOME)
 # ======================
 def page_rally_fibo():
-    st.title("📈 Broker Summary")
+    st.title("📈 Weekly Summary")
 
     
     STOCKS = ["YUPI","ISAT","BREN","SMDM","SILO","STAR","AVIA","INTP","CNMA","TLKM",
@@ -122,10 +122,10 @@ def page_ara():
 st.sidebar.title("📊 Menu")
 
 if "page" not in st.session_state:
-    st.session_state.page = "Broker Summary"
+    st.session_state.page = "Weekly Summary"
 
-if st.sidebar.button("📈 Broker Summary"):
-    st.session_state.page = "Broker Summary"
+if st.sidebar.button("📈 Weekly Summary"):
+    st.session_state.page = "Weekly Summary"
 
 if st.sidebar.button("⚡ ARA Scanner"):
     st.session_state.page = "ARA"
