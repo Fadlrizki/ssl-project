@@ -1,139 +1,292 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
 import yfinance as yf
+import numpy as np
 
-st.set_page_config("IDX Scanner", layout="wide")
+# ======================================================
+# PAGE CONFIG
+# ======================================================
+st.set_page_config(
+    page_title="ARA & Weekly Scanner",
+    layout="wide"
+)
 
-# ======================
-# DATA
-# ======================
+# ======================================================
+# UTILITIES
+# ======================================================
+def scalar(x):
+    return float(x.item()) if hasattr(x, "item") else float(x)
+
+def f(x):
+    try:
+        return float(x)
+    except:
+        return np.nan
+
 @st.cache_data(ttl=3600)
-def fetch_data(ticker, period):
-    df = yf.download(f"{ticker}.JK", period=period, progress=False)
-    if df.empty:
+def download_data(ticker, period, interval="1d"):
+    return yf.download(ticker, period=period, interval=interval, progress=False)
+
+@st.cache_data(ttl=3600)
+def load_tickers():
+    df = pd.read_excel("daftar_saham.xlsx")
+    df.columns = df.columns.str.strip()
+
+    if "Kode" not in df.columns:
+        st.error("Kolom 'Kode' tidak ditemukan di daftar_saham.xlsx")
+        st.stop()
+
+    df["yf_ticker"] = df["Kode"].astype(str).str.upper() + ".JK"
+    return df
+
+# ======================================================
+# ===================== ARA LOGIC =======================
+# ======================================================
+def find_ara_candidates(ticker, lookback=60):
+    df = download_data(ticker, f"{lookback}d")
+
+    if df.empty or len(df) < 25:
         return None
-    if isinstance(df.columns, pd.MultiIndex):
-        df.columns = df.columns.get_level_values(0)
-    return df.dropna()
 
-# ======================
-# INDICATORS
-# ======================
-ema = lambda s, n: s.ewm(span=n, adjust=False).mean()
+    df["AvgVol20"] = df["Volume"].rolling(20).mean()
+    today = df.iloc[-1]
 
-def rsi(s, p=14):
-    d = s.diff()
-    g, l = d.clip(lower=0), -d.clip(upper=0)
-    rs = g.rolling(p).mean() / (l.rolling(p).mean() + 1e-9)
-    return 100 - 100 / (1 + rs)
+    open_p  = scalar(today["Open"])
+    close_p = scalar(today["Close"])
+    high_p  = scalar(today["High"])
+    vol     = scalar(today["Volume"])
+    avgvol  = scalar(today["AvgVol20"])
 
-def fibo(df, n=30):
-    r = df.tail(n)
-    lo, hi = r.Low.min(), r.High.max()
-    return {
-        "Buy_Low": hi - 0.618 * (hi - lo),
-        "Buy_High": hi - 0.382 * (hi - lo),
-        "TP1": hi + 0.272 * (hi - lo),
-        "TP2": hi + 0.618 * (hi - lo),
-    }
+    if avgvol == 0 or pd.isna(avgvol):
+        return None
 
-# ======================
-# PAGE: RALLY FIBO (HOME)
-# ======================
-def page_rally_fibo():
-    st.title("📈 Weekly Summary")
-
-    
-    STOCKS = ["YUPI","ISAT","BREN","SMDM","SILO","STAR","AVIA","INTP","CNMA","TLKM",
-    "BOGA","ADMF","TALF","KLBF","BDMN","BNII","BNGA","MMLP","JPFA","PWON",
-    "BELL","BBHI","KPIG","SMAR","BBSI","SRAJ","ASII","MTEL","BPTR","NOBU",
-    "INDF","UNTR","SONA","ERTX","BACA","TRJA","PTRO","FORU","BMRI","PZZA",
-    "SDPC","YPAS","TARA","JSMR","GTSI","INKP","BABP","MBAP","PGEO","NASA",
-    "POLA","BRMS","KKGI","IPTV","MAIN","MBMA","RIGS","BUVA","HRME","CITY",
-    "BBCA","ESTI","ABMM","CTRA","IBFN","TPIA","BBNI","SMGR","MITI","BBRI",
-    "AISA","MARK","ENAK","PNSE","MAXI","IPOL","PANI","INDY","MGLV","BBYB",
-    "SULI","JKON","TOOL","MTFN","IPCM","PKPK","DRMA","MPMX","APLN","JGLE",
-    "CDIA","BHIT"]
-    out = []
-
-    if st.button("🔍 Scan Rally Fibo"):
-        for s in STOCKS:
-            df = fetch_data(s, "6mo")
-            if df is None or len(df) < 60:
-                continue
-
-            df["EMA13"], df["EMA21"], df["EMA50"] = ema(df.Close,13), ema(df.Close,21), ema(df.Close,50)
-            df["RSI"] = rsi(df.Close)
-
-            c, p = df.iloc[-1], df.iloc[-2]
-
-            if (
-                c.Close > c.EMA13 > c.EMA21 > c.EMA50 and
-                35 <= c.RSI <= 55 and c.RSI > p.RSI
-            ):
-                out.append({
-                    "Stock": s,
-                    "Close": round(c.Close,2),
-                    "RSI": round(c.RSI,1),
-                    **{k: round(v,2) for k,v in fibo(df).items()}
-                })
-
-        if out:
-            st.dataframe(pd.DataFrame(out), use_container_width=True)
-        else:
-            st.warning("Tidak ada kandidat")
-
-# ======================
-# PAGE: ARA SCANNER
-# ======================
-def page_ara():
-    st.title("⚡ ARA Scanner")
-
-    ticker = st.selectbox("Kode Saham", ["GTSI","BUVA","BACA","BRMS","BBCA"])
-    df = fetch_data(ticker, "60d")
-
-    if df is None or len(df) < 25:
-        st.warning("Data tidak cukup")
-        return
-
-    df["AvgVol20"] = df.Volume.rolling(20).mean()
-    t = df.iloc[-1]
-
-    ret = (t.Close - t.Open) / t.Open
+    ret_1d = (close_p - open_p) / open_p
 
     if (
-        0.05 <= ret <= 0.09 and
-        t.Close >= 0.95 * t.High and
-        t.Volume >= 1.5 * t.AvgVol20
+        0.05 <= ret_1d <= 0.09 and
+        close_p >= 0.95 * high_p and
+        vol >= 1.5 * avgvol and
+        close_p > open_p
     ):
-        st.success("✅ Kandidat ARA")
-        st.metric("Return %", round(ret*100,2))
-        st.metric("Volume Ratio", round(t.Volume / t.AvgVol20,2))
-    else:
-        st.info("❌ Tidak memenuhi ARA")
+        return {
+            "Ticker": ticker,
+            "Return_%": round(ret_1d * 100, 2),
+            "Volume_Ratio": round(vol / avgvol, 2),
+            "Close_vs_High_%": round(close_p / high_p * 100, 2),
+            "Close": round(close_p, 2)
+        }
+    return None
 
-    st.subheader("Raw Data (15 hari)")
-    st.dataframe(df.tail(15).sort_index(ascending=False))
 
-# ======================
-# SIDEBAR ROUTER
-# ======================
-st.sidebar.title("📊 Menu")
+def continuation_rate(ticker, lookback=120):
+    df = download_data(ticker, f"{lookback}d")
 
-if "page" not in st.session_state:
-    st.session_state.page = "Weekly Summary"
+    if df.empty or len(df) < 30:
+        return None
 
-if st.sidebar.button("📈 Weekly Summary"):
-    st.session_state.page = "Weekly Summary"
+    df["AvgVol20"] = df["Volume"].rolling(20).mean()
+    results = []
 
-if st.sidebar.button("⚡ ARA Scanner"):
-    st.session_state.page = "ARA"
+    for i in range(20, len(df) - 1):
+        d = df.iloc[i]
+        n = df.iloc[i + 1]
 
-# ======================
-# PAGE ROUTING
-# ======================
-if st.session_state.page == "Broker Summary":
-    page_rally_fibo()
-else:
-    page_ara()
+        open_p  = scalar(d["Open"])
+        close_p = scalar(d["Close"])
+        high_p  = scalar(d["High"])
+        vol     = scalar(d["Volume"])
+        avgvol  = scalar(d["AvgVol20"])
+
+        if avgvol == 0 or pd.isna(avgvol):
+            continue
+
+        ret_1d = (close_p - open_p) / open_p
+
+        if (
+            0.05 <= ret_1d <= 0.09 and
+            close_p >= 0.95 * high_p and
+            vol >= 1.5 * avgvol
+        ):
+            next_ret = (
+                scalar(n["Close"]) - scalar(n["Open"])
+            ) / scalar(n["Open"])
+
+            results.append(next_ret >= 0.03)
+
+    if not results:
+        return None
+
+    return {
+        "Ticker": ticker,
+        "Sample": len(results),
+        "Continuation_%": round(sum(results) / len(results) * 100, 1)
+    }
+
+
+def show_raw_data(ticker, days=15):
+    df = download_data(ticker, f"{days}d")
+
+    if df.empty:
+        return None
+
+    if isinstance(df.columns, pd.MultiIndex):
+        df.columns = df.columns.get_level_values(0)
+
+    df["Return_%"] = (df["Close"] - df["Open"]) / df["Open"] * 100
+    df["Close_vs_High_%"] = df["Close"] / df["High"] * 100
+    df["AvgVol20"] = df["Volume"].rolling(20).mean()
+    df["Volume_Ratio"] = df["Volume"] / df["AvgVol20"].replace(0, pd.NA)
+
+    df = df.sort_index(ascending=False)
+    return df.round(2)
+
+# ======================================================
+# ================= WEEKLY SCREENER ====================
+# ======================================================
+EMA_FAST = 13
+EMA_MID = 21
+EMA_SLOW = 50
+RSI_MIN = 30
+RSI_MAX = 45
+SWING_LOOKBACK = 30
+
+def ema(series, n):
+    return series.ewm(span=n, adjust=False).mean()
+
+def rsi(series, period=14):
+    delta = series.diff()
+    gain = delta.clip(lower=0)
+    loss = -delta.clip(upper=0)
+    avg_gain = gain.rolling(period).mean()
+    avg_loss = loss.rolling(period).mean()
+    rs = avg_gain / (avg_loss + 1e-9)
+    return 100 - (100 / (1 + rs))
+
+def fibonacci_levels(df, lookback=30):
+    recent = df.tail(lookback)
+    swing_low = recent["Low"].min()
+    swing_high = recent["High"].max()
+
+    buy_low = swing_high - 0.618 * (swing_high - swing_low)
+    buy_high = swing_high - 0.382 * (swing_high - swing_low)
+
+    tp1 = swing_high + 0.272 * (swing_high - swing_low)
+    tp2 = swing_high + 0.618 * (swing_high - swing_low)
+
+    return swing_low, swing_high, buy_low, buy_high, tp1, tp2
+
+
+def weekly_summary(stocks):
+    results = []
+
+    for stock in stocks:
+        df = download_data(f"{stock}.JK", "6mo")
+
+        if df.empty or len(df) < 60:
+            continue
+
+        if isinstance(df.columns, pd.MultiIndex):
+            df.columns = df.columns.get_level_values(0)
+
+        df = df.dropna()
+
+        df["EMA13"] = ema(df["Close"], EMA_FAST)
+        df["EMA21"] = ema(df["Close"], EMA_MID)
+        df["EMA50"] = ema(df["Close"], EMA_SLOW)
+        df["RSI"] = rsi(df["Close"])
+
+        latest = df.iloc[-1]
+        prev = df.iloc[-2]
+
+        close = f(latest["Close"])
+        ema13 = f(latest["EMA13"])
+        ema21 = f(latest["EMA21"])
+        ema50 = f(latest["EMA50"])
+        rsi_v = f(latest["RSI"])
+
+        trend_ok = close > ema13 > ema21 > ema50
+        rsi_ok = RSI_MIN <= rsi_v <= RSI_MAX and rsi_v > f(prev["RSI"])
+
+        score = sum([trend_ok, rsi_ok]) * 50
+        if score < 50:
+            continue
+
+        swing_low, swing_high, buy_low, buy_high, tp1, tp2 = fibonacci_levels(df)
+
+        results.append({
+            "Stock": stock,
+            "Price": round(close, 2),
+            "RSI": round(rsi_v, 1),
+            "Score": score,
+            "Buy_Low": round(buy_low, 2),
+            "Buy_High": round(buy_high, 2),
+            "TP1": round(tp1, 2),
+            "TP2": round(tp2, 2)
+        })
+
+    return pd.DataFrame(results).sort_values("Score", ascending=False)
+
+# ======================================================
+# ====================== UI =============================
+# ======================================================
+menu = st.sidebar.radio(
+    "📊 Menu",
+    ["ARA Scanner", "Weekly Summary"]
+)
+
+# ====================== ARA ============================
+if menu == "ARA Scanner":
+    st.title("📈 ARA Scanner Indonesia")
+
+    df_tickers = load_tickers()
+
+    selected_code = st.selectbox(
+        "Pilih Kode Saham",
+        df_tickers["Kode"]
+    )
+
+    ticker = df_tickers.loc[
+        df_tickers["Kode"] == selected_code,
+        "yf_ticker"
+    ].iloc[0]
+
+    if st.button("🔍 Analyze"):
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.subheader("ARA Candidate")
+            ara = find_ara_candidates(ticker)
+            st.dataframe(pd.DataFrame([ara])) if ara else st.info("Tidak memenuhi")
+
+        with col2:
+            st.subheader("Continuation Rate")
+            cont = continuation_rate(ticker)
+            st.dataframe(pd.DataFrame([cont])) if cont else st.info("Data tidak cukup")
+
+        st.subheader("Raw Data (15 Hari)")
+        raw = show_raw_data(ticker)
+        if raw is not None:
+            st.dataframe(raw)
+
+# =================== WEEKLY ============================
+if menu == "Weekly Summary":
+    st.title("📊 Weekly Rally Summary")
+
+    STOCKS = [
+        "YUPI","ISAT","BREN","SMDM","SILO","STAR","AVIA","INTP","CNMA","TLKM",
+        "BOGA","ADMF","TALF","KLBF","BDMN","BNII","BNGA","MMLP","JPFA","PWON",
+        "BELL","BBHI","KPIG","SMAR","BBSI","SRAJ","ASII","MTEL","BPTR","NOBU",
+        "INDF","UNTR","SONA","ERTX","BACA","TRJA","PTRO","FORU","BMRI","PZZA",
+        "SDPC","YPAS","TARA","JSMR","GTSI","INKP","BABP","MBAP","PGEO","NASA",
+        "POLA","BRMS","KKGI","IPTV","MAIN","MBMA","RIGS","BUVA","HRME","CITY",
+        "BBCA","ESTI","ABMM","CTRA","IBFN","TPIA","BBNI","SMGR","MITI","BBRI",
+        "AISA","MARK","ENAK","PNSE","MAXI","IPOL","PANI","INDY","MGLV","BBYB",
+        "SULI","JKON","TOOL","MTFN","IPCM","PKPK","DRMA","MPMX","APLN","JGLE",
+        "CDIA","BHIT"
+    ]
+
+    if st.button("🚀 Run Weekly Scan"):
+        with st.spinner("Scanning market..."):
+            df_weekly = weekly_summary(STOCKS)
+
+        st.dataframe(df_weekly, use_container_width=True)
