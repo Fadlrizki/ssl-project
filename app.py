@@ -153,31 +153,82 @@ def final_decision(major, minor, setup, stage2, vol):
 # ======================================================
 def process_stock(kode):
     ticker = f"{kode}.JK"
-    d1 = fetch_data(ticker,"1d","12mo")
-    h4 = fetch_data(ticker,"4h","12mo")
+
+    d1 = fetch_data(ticker, "1d", "12mo")
+    h4 = fetch_data(ticker, "4h", "12mo")
     if d1 is None or h4 is None:
         return None
 
-    d1, h4 = add_indicators(d1), add_indicators(h4)
+    d1 = add_indicators(d1)
+    h4 = add_indicators(h4)
 
+    # =========================
+    # PRICE
+    # =========================
+    price_today = d1["Close"].iloc[-1]
+    price_yesterday = d1["Close"].iloc[-2]
+    price_change_pct = round((price_today / price_yesterday - 1) * 100, 2)
+
+    # =========================
+    # GAP EMA
+    # =========================
+    ema21 = d1["EMA21"].iloc[-1]
+    ema50 = d1["EMA50"].iloc[-1]
+
+    gap_ema21 = round((price_today / ema21 - 1) * 100, 2)
+    gap_ema50 = round((price_today / ema50 - 1) * 100, 2)
+
+    # =========================
+    # VOLUME
+    # =========================
+    vol_today = d1["Volume"].iloc[-1]
+    vol_yesterday = d1["Volume"].iloc[-2]
+    vol_ma20 = d1["VOL_MA20"].iloc[-1]
+
+    vol_ratio_ma20 = round(vol_today / vol_ma20, 2) if vol_ma20 > 0 else 0
+    vol_change_d1 = round((vol_today / vol_yesterday - 1) * 100, 2)
+
+    if vol_ratio_ma20 < 0.7:
+        vol_state = "DRYING"
+    elif vol_ratio_ma20 > 1.2:
+        vol_state = "EXPANSION"
+    else:
+        vol_state = "NORMAL"
+
+    # =========================
+    # TREND ENGINE
+    # =========================
     major = major_trend_daily(d1)
     minor = minor_phase_4h(h4)
     setup = setup_state(minor)
     stage2 = stage2_trigger(h4, setup)
-    vr, vs = volume_state(d1)
 
+    final = final_decision(
+        major, minor, setup, stage2, vol_state
+    )
+
+    # =========================
+    # RETURN (SEMUA KOLUMN)
+    # =========================
     return {
         "Kode": kode,
-        "Price": d1["Close"].iloc[-1],
-        "PriceChange%": round((d1["Close"].iloc[-1]/d1["Close"].iloc[-2]-1)*100,2),
+        "Price": price_today,
+        "PriceChange%": price_change_pct,
+        "Gap_EMA21%": gap_ema21,
+        "Gap_EMA50%": gap_ema50,
         "MajorTrend": major,
         "MinorPhase": minor,
         "SetupState": setup,
         "Stage2Valid": stage2,
-        "VOL_RATIO_MA20": vr,
-        "VOL_STATE": vs,
-        "FinalDecision": final_decision(major, minor, setup, stage2, vs)
+        "VOL_TODAY": vol_today,
+        "VOL_YESTERDAY": vol_yesterday,
+        "VOL_MA20": vol_ma20,
+        "VOL_RATIO_MA20": vol_ratio_ma20,
+        "VOL_CHANGE_D1": vol_change_d1,
+        "VOL_STATE": vol_state,
+        "FinalDecision": final
     }
+
 
 # ======================================================
 # RUN
