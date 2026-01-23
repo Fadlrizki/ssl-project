@@ -128,15 +128,23 @@ def backtest_score(ticker):
     combined["H4_Close"] = h4_daily["Close"]
 
     scores = []
-    for date in combined.index[:-1]:
+    for date in combined.index:
         d1_row = combined.loc[date]
         try:
-            h4_row = combined.loc[date]
+            h4_row = combined.loc[date]  # gunakan 4h daily aggregated
         except:
             continue
+        # pastikan ada next day
+        if date == combined.index[-1]:
+            next_return = np.nan  # H-1 tidak ada next day
+        else:
+            next_return = (combined["Close"].shift(-1).loc[date]/d1_row["Close"] - 1)*100
         s = score_day(d1_row, h4_row)
-        next_return = (combined["Close"].shift(-1).loc[date]/d1_row["Close"] - 1)*100
-        scores.append({"Date": date, "Score": s, "NextDayReturn": next_return})
+        scores.append({
+            "Date": date,
+            "Score": s,
+            "NextDayReturn": next_return
+        })
 
     df_score = pd.DataFrame(scores)
     prob_table = df_score.groupby("Score").agg(
