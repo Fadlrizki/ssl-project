@@ -17,7 +17,7 @@ SLOPE_WINDOW = 10
 EMA_COMPRESS_TH = 0.003
 BODY_THRESHOLD = 0.02
 CANDLE_DIST_TH = 5
-
+TOLERANCE = 0.02  # untuk gap EMA
 CACHE_DIR = "data_cache"
 os.makedirs(CACHE_DIR, exist_ok=True)
 
@@ -67,20 +67,19 @@ def fetch_data(ticker, interval="1d", period="12mo"):
 # =========================
 def add_indicators(df):
     df = df.copy()
-    # EMA
     df["EMA13"] = df["Close"].ewm(span=EMA_FAST, adjust=False).mean()
     df["EMA21"] = df["Close"].ewm(span=EMA_MID, adjust=False).mean()
     df["EMA50"] = df["Close"].ewm(span=EMA_SLOW, adjust=False).mean()
-    # SMA50
     df["SMA50"] = df["Close"].rolling(SMA50_PERIOD, min_periods=1).mean()
-    # Volume MA20
     df["VOL_MA20"] = df["Volume"].rolling(VOL_MA_PERIOD, min_periods=1).mean()
+
     # RSI
     delta = df["Close"].diff()
     gain = delta.clip(lower=0).rolling(RSI_PERIOD, min_periods=1).mean()
     loss = -delta.clip(upper=0).rolling(RSI_PERIOD, min_periods=1).mean()
     rs = gain / (loss + 1e-9)
     df["RSI"] = 100 - (100 / (1 + rs))
+
     # Stochastic %K
     low_min = df["Low"].rolling(STOCH_PERIOD, min_periods=1).min()
     high_max = df["High"].rolling(STOCH_PERIOD, min_periods=1).max()
@@ -92,18 +91,60 @@ def ema_slope(series):
         return 0
     return series.iloc[-1] - series.iloc[-SLOPE_WINDOW]
 
-def add_indicators(df):
-    EMA_FAST = 13
-    EMA_MID  = 21
-    EMA_SLOW = 50
-    VOL_MA_PERIOD = 20
+# =========================
+# SCORING LOGIC
+# =========================
+def score_day(d1, h4):
+    score = 0
+    if d1["Close"] > d1["SMA50"]:
+        score += 1
+    if d1["Close"] >= d1["EMA13"] >= d1["EMA21"] >= d1["EMA50"]:
+        gap_ok = abs(d1["Close"]/d1["EMA13"] - 1) <= TOLERANCE
+        if gap_ok:
+            score += 1
+    if h4["Close"] >= h4["EMA13"] >= h4["EMA21"] >= h4["EMA50"]:
+        score += 1
+    return score
 
-    df = df.copy()
-    df["EMA13"] = df["Close"].ewm(span=EMA_FAST, adjust=False).mean()
-    df["EMA21"] = df["Close"].ewm(span=EMA_MID, adjust=False).mean()
-    df["EMA50"] = df["Close"].ewm(span=EMA_SLOW, adjust=False).mean()
-    df["VOL_MA20"] = df["Volume"].rolling(VOL_MA_PERIOD).mean()
-    return df
+# =========================
+# BACKTEST
+# =========================
+def backtest_score(ticker):
+    d1 = fetch_data(ticker, "1d", "12mo")
+    h4 = fetch_data(ticker, "4h", "12mo")
+    if d1 is None or h4 is None:
+        return None
+
+    d1 = add_indicators(d1)
+    h4 = add_indicators(h4)
+
+    h4_daily = h4.resample("1D").last()
+    combined = pd.DataFrame(index=d1.index)
+    combined["Close"] = d1["Close"]
+    combined["SMA50"] = d1["SMA50"]
+    combined["EMA13"] = d1["EMA13"]
+    combined["EMA21"] = d1["EMA21"]
+    combined["EMA50"] = d1["EMA50"]
+    combined["H4_Close"] = h4_daily["Close"]
+
+    scores = []
+    for date in combined.index[:-1]:
+        d1_row = combined.loc[date]
+        try:
+            h4_row = combined.loc[date]
+        except:
+            continue
+        s = score_day(d1_row, h4_row)
+        next_return = (combined["Close"].shift(-1).loc[date]/d1_row["Close"] - 1)*100
+        scores.append({"Date": date, "Score": s, "NextDayReturn": next_return})
+
+    df_score = pd.DataFrame(scores)
+    prob_table = df_score.groupby("Score").agg(
+        Count=("Score","size"),
+        Prob_up=("NextDayReturn", lambda x: (x>0).sum()/len(x)*100),
+        Avg_next_day_return=("NextDayReturn","mean")
+    ).reset_index()
+    return df_score, prob_table
 
 # =========================
 # CANDLE INFO
@@ -129,7 +170,7 @@ def latest_candle_info(df):
     return "Doji/Netral", 0, 0
 
 # =========================
-# SCORING
+# SCORE DASAR
 # =========================
 def score_dasar(rsi, stoch, dist_sma50):
     score = 0
@@ -224,37 +265,27 @@ def process_stock(kode):
         d1 = add_indicators(d1)
         h4 = add_indicators(h4)
 
-        # ===== Core trend =====
         major = major_trend_daily(d1)
         minor = minor_phase_4h(h4)
         setup = setup_state(minor)
         stage2 = stage2_trigger(h4, setup)
 
-        # ===== Volume =====
         vol_today, vol_yesterday, vol_ma20, vol_ratio_ma20, vol_change_d1, vol_state = volume_state(d1)
-
-        # ===== Price =====
         price_today = d1["Close"].iloc[-1]
         price_yesterday = d1["Close"].iloc[-2] if len(d1) > 1 else d1["Close"].iloc[-1]
         price_change_pct = round((price_today/price_yesterday - 1)*100,2)
         gap_ema21 = round((price_today/d1["EMA21"].iloc[-1]-1)*100,2)
         gap_ema50 = round((price_today/d1["EMA50"].iloc[-1]-1)*100,2)
 
-        # ===== Teknikal =====
         rsi = d1["RSI"].iloc[-1]
         stoch = d1["STOCH"].iloc[-1]
         sma50 = d1["SMA50"].iloc[-1]
         dist_to_sma50 = compute_dist_sma50(d1)
 
-        # ===== Candle info =====
         candle_label, candle_red_breakdown, candle_green_approach = latest_candle_info(d1)
-
-        # ===== Score =====
         score = score_dasar(rsi, stoch, dist_to_sma50)
         candle_effect = 1 if candle_green_approach else -1 if candle_red_breakdown else 0
         total_score = score + candle_effect + (1 if stage2 else 0) + (1 if vol_state=="EXPANSION" else 0)
-
-        # ===== Final decision =====
         final_dec = final_decision(major, minor, setup, stage2, vol_state)
 
         return {
