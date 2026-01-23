@@ -6,7 +6,6 @@ import os
 import pickle
 
 from engine import process_stock, fetch_data
-from indicators import add_indicators
 
 # =========================
 # CONFIG
