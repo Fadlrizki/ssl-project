@@ -92,6 +92,19 @@ def ema_slope(series):
         return 0
     return series.iloc[-1] - series.iloc[-SLOPE_WINDOW]
 
+def add_indicators(df):
+    EMA_FAST = 13
+    EMA_MID  = 21
+    EMA_SLOW = 50
+    VOL_MA_PERIOD = 20
+
+    df = df.copy()
+    df["EMA13"] = df["Close"].ewm(span=EMA_FAST, adjust=False).mean()
+    df["EMA21"] = df["Close"].ewm(span=EMA_MID, adjust=False).mean()
+    df["EMA50"] = df["Close"].ewm(span=EMA_SLOW, adjust=False).mean()
+    df["VOL_MA20"] = df["Volume"].rolling(VOL_MA_PERIOD).mean()
+    return df
+
 # =========================
 # CANDLE INFO
 # =========================

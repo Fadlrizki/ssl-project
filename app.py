@@ -5,7 +5,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import os
 import pickle
 
-from engine import process_stock, fetch_data
+from engine import process_stock, fetch_data, add_indicators
 
 # =========================
 # CONFIG
