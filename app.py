@@ -161,7 +161,34 @@ if event.selection.rows:
         fig.add_trace(go.Scatter(x=dfc.index, y=dfc["EMA21"], mode='lines', line=dict(color='orange'), name='EMA21'))
         fig.add_trace(go.Scatter(x=dfc.index, y=dfc["EMA50"], mode='lines', line=dict(color='red'), name='EMA50'))
         # Volume
-        fig.add_trace(go.Bar(x=dfc.index, y=dfc["Volume"], name="Volume", marker_color='grey', yaxis='y2'))
+        volume_colors = ['green' if dfc['Close'].iloc[i] >= dfc['Open'].iloc[i] else 'red' 
+                 for i in range(len(dfc))]
+
+        # Trace volume
+        fig.add_trace(go.Bar(
+            x=dfc.index,
+            y=dfc["Volume"],
+            name="Volume",
+            marker_color=volume_colors,
+            yaxis='y2',
+            opacity=0.5  # biar agak transparan
+        ))
+
+        # Update layout agar y2 (volume) ada jarak di bawah candlestick
+        fig.update_layout(
+            xaxis_rangeslider_visible=False,
+            yaxis=dict(title="Price"),
+            yaxis2=dict(
+                title="Volume",
+                overlaying='y',
+                side='right',
+                showgrid=False,
+                position=1.0,
+                anchor="x",
+                range=[0, dfc["Volume"].max()*4]  # kasih space di bawah candlestick
+            ),
+            legend=dict(x=0, y=1.1, orientation="h")
+        )
 
         fig.update_layout(
             xaxis_rangeslider_visible=False,
