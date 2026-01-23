@@ -199,6 +199,8 @@ if event.selection.rows:
                     st.markdown("**Distribusi Score & Probabilitas Kenaikan Next Day**")
                     st.dataframe(prob_table)
                     st.markdown("**Data Harian Score & Next Day Return**")
-                    st.dataframe(df_score)
+                    df_score_sorted = df_score.sort_values("Date", ascending=False).reset_index(drop=True)
+                    st.dataframe(df_score_sorted)
+
                 else:
                     st.warning("Data tidak cukup untuk backtest")
