@@ -112,7 +112,14 @@ df = df.sort_values("Total_Score", ascending=False).reset_index(drop=True)
 # st.write("Jumlah saham yang berhasil diproses:", len(df))
 # st.write(df.head())
 
-
+# =========================
+# FILTER NAMA KODE SAHAM
+# =========================
+st.subheader("🔎 Filter Nama Kode Saham")
+kode_filter = st.text_input("Masukkan kode saham").upper().strip()
+if kode_filter:
+    df = df[df["Kode"].str.contains(kode_filter)]
+    
 # =========================
 # FILTER
 # =========================
@@ -132,6 +139,8 @@ for col, val in filters.items():
 
 st.subheader("📋 Screening Result")
 event = st.dataframe(df, use_container_width=True, selection_mode="single-row", on_select="rerun")
+
+
 
 # =========================
 # AUTO-UPDATE CHART & METRICS
