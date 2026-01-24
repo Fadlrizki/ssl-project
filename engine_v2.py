@@ -266,60 +266,52 @@ def stage2_trigger(df, setup):
     return last["Close"] > last["EMA13"] and ema_slope(df["EMA13"]) > 0
 
 # ======================================================
-# VOLUME STATE
+# VOLUME BEHAVIOR (NEW - CANDLE BASED)
 # ======================================================
 def volume_behavior(df):
     last = df.iloc[-1]
 
-    # ===== BASIC =====
-    vol_ma20 = last["VOL_MA20"] if last["VOL_MA20"] > 0 else 1
-    vol_ratio = last["Volume"] / vol_ma20
-
     open_ = last["Open"]
-    close = last["Close"]
     high = last["High"]
     low = last["Low"]
+    close = last["Close"]
+    volume = last["Volume"]
+    vol_ma20 = last["VOL_MA20"] if last["VOL_MA20"] > 0 else 1
+    ema21 = last["EMA21"]
 
-    body = abs(close - open_)
+    # ===== GUARD =====
+    if high == low:
+        return "VOL_NEUTRAL", round(volume / vol_ma20, 2)
+
     range_ = high - low
-    atr = last["ATR14"] if last["ATR14"] > 0 else range_
-
+    body = abs(close - open_)
     upper_wick = high - max(open_, close)
     lower_wick = min(open_, close) - low
 
-    body_ratio = body / max(range_, 1e-9)
-    cpi = body / max(atr, 1e-9)   # Candle Pressure Index
+    body_ratio = body / range_
+    vol_ratio = volume / vol_ma20
 
-    # ===== CONDITIONS =====
-    is_expansion = vol_ratio >= 1.2
-    range_compact = range_ <= 1.4 * atr
+    # ===== LOW VOLUME =====
+    if vol_ratio < 1.2:
+        return "VOL_NEUTRAL", round(vol_ratio, 2)
 
     # ===== ABSORPTION =====
     if (
-        is_expansion and
         lower_wick >= 1.5 * body and
         body_ratio <= 0.40 and
-        cpi >= 0.55 and
-        range_compact and
-        close >= last["EMA21"]
+        close >= ema21
     ):
-        return "ABSORPTION", round(vol_ratio, 2)
+        return "VOL_ABSORPTION", round(vol_ratio, 2)
 
     # ===== DISTRIBUTION =====
     if (
-        is_expansion and
         upper_wick >= 1.5 * body and
         body_ratio <= 0.40 and
-        cpi <= 0.45 and
-        range_compact
+        close < ema21
     ):
-        if close < last["EMA21"]:
-            return "DISTRIBUTION_STRONG", round(vol_ratio, 2)
-        else:
-            return "DISTRIBUTION_EARLY", round(vol_ratio, 2)
+        return "VOL_DISTRIBUTION", round(vol_ratio, 2)
 
-    return "NORMAL", round(vol_ratio, 2)
-
+    return "VOL_EXPANSION_NEUTRAL", round(vol_ratio, 2)
 
 
 # =========================
@@ -415,6 +407,10 @@ def process_stock(kode):
 
         candle_label, candle_red_breakdown, candle_green_approach = latest_candle_info(d1)
         candle_effect = 1 if candle_green_approach else -1 if candle_red_breakdown else 0
+        if minor == "TREND_CONTINUE_NEW" and vol_behavior == "VOL_ABSORPTION":
+            confidence += 1
+            why.append("Volume absorption mendukung kelanjutan trend")
+            confidence_pct = round(confidence / 7 * 100)
 
         final_dec = final_decision(major, minor, setup, stage2, vol_behavior)
 
