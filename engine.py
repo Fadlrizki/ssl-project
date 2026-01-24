@@ -208,22 +208,61 @@ def major_trend_daily(df):
         return "INVALID"
     return "STRONG"
 
+def dynamic_atr_mult(df, lookback=50, base_mult=1.5, max_mult=2.5, min_mult=1.0):
+    """
+    Menghitung ATR multiplier dinamis berdasarkan volatilitas historis
+    df: DataFrame harus punya kolom 'ATR14'
+    lookback: jumlah candle terakhir untuk menghitung ATR rata-rata
+    base_mult: multiplier dasar
+    max_mult/min_mult: batas atas dan bawah multiplier
+    """
+    if "ATR14" not in df.columns or len(df) < lookback:
+        return base_mult
+    
+    atr_hist = df["ATR14"].tail(lookback)
+    atr_mean = atr_hist.mean()
+    atr_last = atr_hist.iloc[-1]
+    
+    # logika sederhana: jika ATR terakhir lebih tinggi dari rata-rata, kurangi multiplier
+    # jika ATR terakhir lebih rendah dari rata-rata, tingkatkan multiplier
+    mult = base_mult * (atr_mean / atr_last)
+    
+    # batasi di range min_mult - max_mult
+    mult = max(min_mult, min(max_mult, mult))
+    return mult
+
+
 def minor_phase_4h(df):
-    if len(df) < 2:
+    if len(df) < 3:
         return "NEUTRAL"
-    last, prev = df.iloc[-1], df.iloc[-2]
-    low50 = df["Low"].tail(50)
-    low50_min = low50.min() if not low50.empty else np.nan
-    compress = abs(last["EMA13"] - last["EMA21"]) / max(last["EMA21"],1) < EMA_COMPRESS_TH
-    if not np.isnan(low50_min) and last["Close"] < low50_min:
-        return "BREAKDOWN"
-    if compress:
-        return "EMA_COMPRESS_PULLBACK"
-    if last["Close"] > last["EMA21"] and prev["Close"] < prev["EMA21"]:
-        return "PULLBACK_RECOVERED"
-    if last["Close"] > last["EMA21"]:
+
+    last = df.iloc[-1]
+    prev = df.iloc[-2]
+
+    # --- Kondisi sebelumnya bearish ---
+    prev_bearish = prev["EMA13"] < prev["EMA21"] < prev["EMA50"]
+
+    # --- Kondisi sekarang bullish ---
+    now_bullish = last["EMA13"] > last["EMA21"] > last["EMA50"]
+
+    # --- Harga di atas EMA13 ---
+    price_above = last["Close"] > last["EMA13"]
+
+    # --- Volume spike opsional ---
+    volume_spike = False
+    if "Volume" in df.columns:
+        vol_avg = df["Volume"].tail(20).mean()
+        volume_spike = last["Volume"] > 1.5 * vol_avg
+
+    # --- Trend Continue Bullish ---
+    if prev_bearish and now_bullish and price_above:
+        if volume_spike:
+            return "TREND_CONTINUE_CONFIRMED"
         return "TREND_CONTINUE"
+
     return "NEUTRAL"
+
+
 
 def setup_state(minor):
     if minor in ["PULLBACK_RECOVERED","TREND_CONTINUE"]:

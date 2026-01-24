@@ -5,202 +5,212 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import os
 import pickle
 
-from engine import process_stock, fetch_data, add_indicators, backtest_score
+from engine import backtest_score
+from engine_v2 import process_stock, fetch_data, add_indicators
 
-# =========================
+# ======================================================
 # CONFIG
-# =========================
+# ======================================================
 EXCEL_FILE = "daftar_saham.xlsx"
 KODE_COLUMN = "Kode"
 MAX_WORKERS = 8
-CACHE_SCREENING = "screening_cache.pkl"
 
+CACHE_VERSION = "v3"
+CACHE_SCREENING = f"screening_cache_{CACHE_VERSION}.pkl"
+
+REQUIRED_COLS = {
+    "Kode", "MajorTrend", "MinorPhase", "SetupState",
+    "FinalDecision", "RSI", "VOL_BEHAVIOR"
+}
+
+# ======================================================
+# PAGE
+# ======================================================
 st.set_page_config(layout="wide")
-st.title("📊 IDX Price Action Screener (Complete Version)")
-st.caption("Daily trend • Pullback • Momentum • Volume")
+st.title("📊 IDX Price Action Screener V2")
+st.caption("Daily trend • Minor phase • Volume behavior")
 
-# =========================
-# LOAD DAFTAR SAHAM
-# =========================
+# ======================================================
+# HELPERS
+# ======================================================
+def load_cache_safe(path):
+    if not os.path.exists(path):
+        return pd.DataFrame()
+    try:
+        with open(path, "rb") as f:
+            df = pickle.load(f)
+        if not REQUIRED_COLS.issubset(df.columns):
+            return pd.DataFrame()
+        return df
+    except Exception:
+        return pd.DataFrame()
+
+def save_cache(df, path):
+    with open(path, "wb") as f:
+        pickle.dump(df, f)
+
+# ======================================================
+# LOAD SAHAM
+# ======================================================
 saham_df = pd.read_excel(EXCEL_FILE)
 codes = saham_df[KODE_COLUMN].dropna().unique().tolist()
 
-# =========================
-# LOAD CACHE SCREENING
-# =========================
-if os.path.exists(CACHE_SCREENING):
-    with open(CACHE_SCREENING, "rb") as f:
-        cached_df = pickle.load(f)
-else:
-    cached_df = pd.DataFrame()
+cached_df = load_cache_safe(CACHE_SCREENING)
 
-# =========================
+# ======================================================
 # RUN SCREENING
-# =========================
+# ======================================================
 if st.button("🚀 Run Screening"):
-    total = len(codes)
+    results = []
     progress = st.progress(0)
     status = st.empty()
-    results = []
-    success = 0
 
     with ThreadPoolExecutor(max_workers=MAX_WORKERS) as ex:
-        futures = {}
-        for k in codes:
-            if not cached_df.empty and k in cached_df["Kode"].values:
-                row = cached_df[cached_df["Kode"]==k].iloc[0].to_dict()
-                results.append(row)
-                success += 1
-                progress.progress(success/total)
-                status.text(f"Processed {success}/{total} ({success/total:.1%}) | Success: {success}")
-            else:
-                futures[ex.submit(process_stock, k)] = k
+        futures = {
+            ex.submit(process_stock, k): k
+            for k in codes
+            if cached_df.empty or k not in cached_df["Kode"].values
+        }
+
+        # pakai cache dulu
+        if not cached_df.empty:
+            results.extend(cached_df.to_dict("records"))
+
+        done = len(results)
+        total = len(codes)
 
         for f in as_completed(futures):
+            kode = futures[f]
             try:
                 r = f.result()
                 if r:
                     results.append(r)
-                    success += 1
-                progress.progress(success/total)
-                status.text(f"Processed {success}/{total} ({success/total:.1%}) | Success: {success}")
-            except Exception as e:
-                print(f"Thread error: {futures[f]} | {e}")
+                    done += 1
+            except Exception:
+                pass
+
+            progress.progress(done / total)
+            status.text(f"Processed {done}/{total}")
 
     df_scan = pd.DataFrame(results)
+    save_cache(df_scan, CACHE_SCREENING)
     st.session_state["scan"] = df_scan
+    st.success(f"Selesai: {len(df_scan)} saham valid")
 
-    with open(CACHE_SCREENING, "wb") as f:
-        pickle.dump(df_scan, f)
-
-    st.success(f"Screening selesai: {success}/{total} saham berhasil diproses")
-
-# =========================
+# ======================================================
 # GUARD
-# =========================
+# ======================================================
 if "scan" not in st.session_state or st.session_state["scan"].empty:
-    st.warning("Tidak ada saham yang berhasil diproses.")
+    st.warning("Belum ada hasil screening")
     st.stop()
 
-df = st.session_state["scan"]
+df = st.session_state["scan"].copy()
 
-# Pastikan semua kolom ada
-required_cols = [
-    "Total_Score", "Score_Dasar", "Candle_Effect",
-    "RSI", "Stoch_K", "Dist_to_SMA50",
-    "Latest_Candle",
-    "MajorTrend", "MinorPhase", "SetupState",
-    "VOL_STATE", "FinalDecision"
-]
+# ======================================================
+# HORIZONTAL FILTER BAR
+# ======================================================
+st.markdown("### 🔎 Filter")
 
-for col in required_cols:
-    if col not in df.columns:
-        df[col] = 0
+c1, c2, c3, c4, c5 = st.columns(5)
 
-df = df.sort_values("Total_Score", ascending=False).reset_index(drop=True)
+with c1:
+    kode_filter = st.text_input("Kode").upper()
+    if kode_filter:
+        df = df[df["Kode"].str.contains(kode_filter)]
 
-# =========================
-# FILTER NAMA KODE SAHAM
-# =========================
-st.subheader("🔎 Filter Nama Kode Saham")
-kode_filter = st.text_input("Masukkan kode saham").upper().strip()
-if kode_filter:
-    df = df[df["Kode"].str.contains(kode_filter)]
+with c2:
+    rsi_mode = st.selectbox("RSI", ["All", "> 70", "< 30", "40–70"])
+    if rsi_mode == "> 70":
+        df = df[df["RSI"] > 70]
+    elif rsi_mode == "< 30":
+        df = df[df["RSI"] < 30]
+    elif rsi_mode == "40–70":
+        df = df[(df["RSI"] >= 40) & (df["RSI"] <= 70)]
 
-# =========================
-# FILTER
-# =========================
-st.subheader("Filter Hasil Screening")
-cols = st.columns(5)
-filters = {
-    "MajorTrend": cols[0].multiselect("MajorTrend", sorted(df["MajorTrend"].unique())),
-    "MinorPhase": cols[1].multiselect("MinorPhase", sorted(df["MinorPhase"].unique())),
-    "SetupState": cols[2].multiselect("SetupState", sorted(df["SetupState"].unique())),
-    "VOL_STATE": cols[3].multiselect("VOL_STATE", sorted(df["VOL_STATE"].unique())),
-    "FinalDecision": cols[4].multiselect("FinalDecision", sorted(df["FinalDecision"].unique())),
-}
-for col, val in filters.items():
-    if val:
-        df = df[df[col].isin(val)]
+with c3:
+    candle = st.multiselect(
+        "Candle",
+        sorted(df["Latest_Candle"].dropna().unique())
+    )
+    if candle:
+        df = df[df["Latest_Candle"].isin(candle)]
 
+with c4:
+    vol_beh = st.multiselect(
+        "Volume",
+        sorted(df["VOL_BEHAVIOR"].dropna().unique())
+    )
+    if vol_beh:
+        df = df[df["VOL_BEHAVIOR"].isin(vol_beh)]
+
+with c5:
+    if st.checkbox("⚡ Scalping >5%"):
+        df = df[(df["RSI"] > 70) & (df["Latest_Candle"] == "Hijau Biasa")]
+
+# ======================================================
+# RESULT TABLE
+# ======================================================
 st.subheader("📋 Screening Result")
-event = st.dataframe(df, use_container_width=True, selection_mode="single-row", on_select="rerun")
+event = st.dataframe(
+    df,
+    use_container_width=True,
+    selection_mode="single-row",
+    on_select="rerun"
+)
 
-# =========================
-# AUTO-UPDATE CHART & METRICS
-# =========================
+# ======================================================
+# DETAIL VIEW
+# ======================================================
 if event.selection.rows:
     row = df.iloc[event.selection.rows[0]]
     kode = row["Kode"]
 
     dfc = fetch_data(f"{kode}.JK", "1d", "12mo")
-    if dfc is not None and not dfc.empty:
-        dfc = add_indicators(dfc)
-        st.subheader(f"📈 {kode} | Close: {dfc['Close'].iloc[-1]:.0f}")
+    if dfc is None or dfc.empty:
+        st.warning("Data chart tidak tersedia")
+        st.stop()
 
-        fig = go.Figure()
-        fig.add_trace(go.Candlestick(
-            x=dfc.index,
-            open=dfc['Open'],
-            high=dfc['High'],
-            low=dfc['Low'],
-            close=dfc['Close'],
-            name="Candle"
-        ))
-        fig.add_trace(go.Scatter(x=dfc.index, y=dfc["EMA13"], mode='lines', line=dict(color='blue'), name='EMA13'))
-        fig.add_trace(go.Scatter(x=dfc.index, y=dfc["EMA21"], mode='lines', line=dict(color='orange'), name='EMA21'))
-        fig.add_trace(go.Scatter(x=dfc.index, y=dfc["EMA50"], mode='lines', line=dict(color='red'), name='EMA50'))
+    dfc = add_indicators(dfc)
 
-        volume_colors = ['green' if dfc['Close'].iloc[i] >= dfc['Open'].iloc[i] else 'red' 
-                         for i in range(len(dfc))]
-        fig.add_trace(go.Bar(
-            x=dfc.index,
-            y=dfc["Volume"],
-            name="Volume",
-            marker_color=volume_colors,
-            yaxis='y2',
-            opacity=0.5
-        ))
-        fig.update_layout(
-            xaxis_rangeslider_visible=False,
-            yaxis=dict(title="Price"),
-            yaxis2=dict(
-                title="Volume",
-                overlaying='y',
-                side='right',
-                showgrid=False,
-                position=1.0,
-                range=[0, dfc["Volume"].max()*4]
-            ),
-            legend=dict(x=0, y=1.1, orientation="h")
-        )
-        st.plotly_chart(fig, use_container_width=True)
+    fig = go.Figure()
+    fig.add_candlestick(
+        x=dfc.index,
+        open=dfc.Open,
+        high=dfc.High,
+        low=dfc.Low,
+        close=dfc.Close
+    )
+    fig.add_scatter(x=dfc.index, y=dfc.EMA13, name="EMA13")
+    fig.add_scatter(x=dfc.index, y=dfc.EMA21, name="EMA21")
+    fig.add_scatter(x=dfc.index, y=dfc.EMA50, name="EMA50")
 
-        metrics = {
-            "RSI": row["RSI"],
-            "Stochastic %K": row["Stoch_K"],
-            "Distance to SMA50 (%)": row["Dist_to_SMA50"],
-            "SMA50": row["SMA50"],
-            "Latest Candle": row["Latest_Candle"],
-            "Score Dasar": row["Score_Dasar"],
-            "Candle Effect": row["Candle_Effect"],
-            "Total Score": row["Total_Score"]
-        }
-        st.table(pd.DataFrame(metrics.items(), columns=["Metric","Value"]))
+    fig.update_layout(height=500, xaxis_rangeslider_visible=False)
+    st.plotly_chart(fig, use_container_width=True)
 
-        # =========================
-        # BACKTEST SECTION
-        # =========================
-        st.subheader("📊 Backtest Score 1 Tahun Terakhir")
-        if st.button(f"Run Backtest {kode}"):
-            with st.spinner("Menghitung backtest..."):
-                df_score, prob_table = backtest_score(f"{kode}.JK")
-                if df_score is not None and not df_score.empty:
-                    st.markdown("**Distribusi Score & Probabilitas Kenaikan Next Day**")
-                    st.dataframe(prob_table)
-                    st.markdown("**Data Harian Score & Next Day Return**")
-                    df_score_sorted = df_score.sort_values("Date", ascending=False).reset_index(drop=True)
-                    st.dataframe(df_score_sorted)
+    st.table(pd.DataFrame({
+        "Metric": [
+            "Minor Phase", "Confidence",
+            "RSI", "Stoch %K",
+            "Volume Behavior", "Volume Ratio",
+            "Final Decision"
+        ],
+        "Value": [
+            row["MinorPhase"],
+            f'{row["MinorConfidence"]} ({row["MinorConfidence%"]}%)',
+            row["RSI"],
+            row["Stoch_K"],
+            row["VOL_BEHAVIOR"],
+            row["VOL_RATIO"],
+            row["FinalDecision"]
+        ]
+    }))
 
-                else:
-                    st.warning("Data tidak cukup untuk backtest")
+# ======================================================
+# BACKTEST
+# ======================================================
+st.subheader("📊 Backtest")
+if event.selection.rows and st.button("Run Backtest"):
+    kode = df.iloc[event.selection.rows[0]]["Kode"]
+    df_score, prob = backtest_score(f"{kode}.JK")
+    if df_score is not None:
+        st.dataframe(prob)
