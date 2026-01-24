@@ -145,7 +145,7 @@ with c4:
 
 with c5:
     if st.checkbox("⚡ Scalping >5%"):
-        df = df[(df["RSI"] > 70) & (df["Latest_Candle"] == "Hijau Biasa")]
+        df = df[(df["RSI"] > 70) & (df["Latest_Candle"] == "Hijau Kuat (Impulse)")]
 
 # ======================================================
 # RESULT TABLE

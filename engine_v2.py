@@ -319,23 +319,74 @@ def volume_behavior(df):
 # =========================
 def latest_candle_info(df):
     if len(df) < 2:
-        return "N/A", False, False
+        return "N/A", 0, 0
+
     last = df.iloc[-1]
     prev = df.iloc[-2]
-    body_pct = abs(last["Close"] - last["Open"]) / max(last["Open"], 1)
-    is_red = last["Close"] < last["Open"]
-    is_green = last["Close"] > last["Open"]
-    breakdown = is_red and body_pct > BODY_THRESHOLD and last["Close"] < last["SMA50"] and prev["Close"] >= last["SMA50"]
-    approaching = is_green and abs((last["Close"] - last["SMA50"]) / max(last["SMA50"],1) * 100) <= CANDLE_DIST_TH
+
+    open_ = last["Open"]
+    close = last["Close"]
+    high = last["High"]
+    low = last["Low"]
+
+    range_ = high - low
+    if range_ == 0:
+        return "Doji/Netral", 0, 0
+
+    body = abs(close - open_)
+    body_ratio = body / range_
+
+    is_red = close < open_
+    is_green = close > open_
+
+    # =============================
+    # STRONG GREEN (IMPULSE)
+    # =============================
+    strong_green = (
+        is_green and
+        body_ratio >= 0.6 and
+        range_ >= 1.2 * last["ATR14"] and
+        (high - close) / range_ <= 0.15
+    )
+
+    # =============================
+    # BREAKDOWN
+    # =============================
+    breakdown = (
+        is_red and
+        body_ratio > BODY_THRESHOLD and
+        close < last["SMA50"] and
+        prev["Close"] >= last["SMA50"]
+    )
+
+    # =============================
+    # APPROACH SMA50
+    # =============================
+    approaching = (
+        is_green and
+        abs((close - last["SMA50"]) / max(last["SMA50"], 1) * 100) <= CANDLE_DIST_TH
+    )
+
+    # =============================
+    # LABEL PRIORITY
+    # =============================
+    if strong_green:
+        return "Hijau Kuat (Impulse)", 0, 1
+
     if breakdown:
-        return "Merah Kuat & Breakdown", -1, False
+        return "Merah Kuat & Breakdown", -1, 0
+
     if approaching:
-        return "Hijau & Mendekati SMA50", False, 1
+        return "Hijau & Mendekati SMA50", 0, 1
+
     if is_red:
-        return "Merah Biasa", 0, False
+        return "Merah Biasa", 0, 0
+
     if is_green:
-        return "Hijau Biasa", False, 0
+        return "Hijau Biasa", 0, 0
+
     return "Doji/Netral", 0, 0
+
 
 # =========================
 # DIST SMA50
@@ -411,6 +462,10 @@ def process_stock(kode):
             confidence += 1
             why.append("Volume absorption mendukung kelanjutan trend")
             confidence_pct = round(confidence / 7 * 100)
+        if minor == "TREND_CONTINUE_NEW" and candle_label == "Hijau Kuat (Impulse)":
+            confidence += 1
+            why.append("Impulse candle mendukung kelanjutan trend")
+
 
         final_dec = final_decision(major, minor, setup, stage2, vol_behavior)
 
