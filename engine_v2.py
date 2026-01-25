@@ -2,6 +2,11 @@ import pandas as pd
 import numpy as np
 import yfinance as yf
 import os
+import pickle
+import shutil
+
+shutil.rmtree("data_cache", ignore_errors=True)
+
 
 # ======================================================
 # CONFIG
@@ -20,59 +25,105 @@ BODY_THRESHOLD = 0.02
 CANDLE_DIST_TH = 5
 TOLERANCE = 0.02
 
-CACHE_DIR = "data_cache"
-os.makedirs(CACHE_DIR, exist_ok=True)
+# ======================================================
+# normalize yfinance
+# ======================================================
+def normalize_yf_df(df):
+    """
+    Pastikan df OHLCV flat (bukan multi-index column)
+    """
+    if isinstance(df.columns, pd.MultiIndex):
+        df.columns = df.columns.get_level_values(0)
+    
+    df = df.loc[:, ~df.columns.duplicated()]
+    return df
 
 # ======================================================
 # CACHE
 # ======================================================
-def cache_path(ticker, interval):
-    return os.path.join(CACHE_DIR, f"{ticker}_{interval}.parquet")
+CACHE_DIR = "data_cache"
+os.makedirs(CACHE_DIR, exist_ok=True)
+
+def _cache_path(ticker, interval):
+    safe = ticker.replace(".", "_")
+    return os.path.join(CACHE_DIR, f"{safe}_{interval}.pkl")
+
 
 def load_cache(ticker, interval):
-    p = cache_path(ticker, interval)
-    if os.path.exists(p):
-        return pd.read_parquet(p)
+    path = _cache_path(ticker, interval)
+    if os.path.exists(path):
+        try:
+            with open(path, "rb") as f:
+                return pickle.load(f)
+        except Exception:
+            return None
     return None
 
-def save_cache(df, ticker, interval):
-    df.to_parquet(cache_path(ticker, interval))
+def save_cache(ticker, interval, df):
+    path = _cache_path(ticker, interval)
+    with open(path, "wb") as f:
+        pickle.dump(df, f)
+
+def is_cache_fresh(df, interval="1d"):
+    """
+    Cache dianggap fresh jika:
+    - tanggal terakhir >= last trading day
+    """
+    if df is None or df.empty:
+        return False
+
+    last_cached_date = df.index[-1].date()
+
+    now = pd.Timestamp.now(tz="Asia/Jakarta")
+
+    # Jika weekend → last trading day = Jumat
+    if now.weekday() >= 5:  # Sabtu / Minggu
+        last_trading_day = (now - pd.offsets.BDay(1)).date()
+    else:
+        last_trading_day = now.date()
+
+    return last_cached_date >= last_trading_day
 
 # ======================================================
 # FETCH DATA
 # ======================================================
 def fetch_data(ticker, interval="1d", period="12mo"):
-    try:
-        cached = load_cache(ticker, interval)
-        if cached is not None and len(cached) > 50:
-            return cached.copy()
+    # 1️⃣ Coba load cache
+    cached = load_cache(ticker, interval)
 
+    # 2️⃣ Validasi cache berdasarkan tanggal
+    if cached is not None and is_cache_fresh(cached, interval):
+        return cached.copy()
+
+    # 3️⃣ Fetch ulang dari Yahoo
+    try:
         df = yf.download(
             ticker,
             interval=interval,
             period=period,
             progress=False,
             threads=False,
+        group_by="column",
             auto_adjust=False
         )
-
-        if df is None or df.empty:
-            return None
-
-        if isinstance(df.columns, pd.MultiIndex):
-            df.columns = df.columns.get_level_values(0)
-
-        df = df[["Open","High","Low","Close","Volume"]].dropna()
-
-        if len(df) < 20 or df["Volume"].tail(5).sum() == 0:
-            return None
-
-        save_cache(df, ticker, interval)
-        return df
+        df = normalize_yf_df(df)
 
     except Exception as e:
-        print(f"Failed download: {ticker} | {e}")
+        print(f"Failed download {ticker} | {e}")
         return None
+
+    if df is None or df.empty:
+        return None
+
+    # 4️⃣ Rapikan index
+    df = df.copy()
+    df.index = pd.to_datetime(df.index)
+
+    # 5️⃣ Simpan cache baru
+    save_cache(ticker, interval, df)
+
+    return df
+
 
 # ======================================================
 # INDICATORS
@@ -105,6 +156,19 @@ def add_indicators(df):
         abs(df["Low"] - df["Close"].shift())
     ], axis=1).max(axis=1)
     df["ATR14"] = tr.rolling(14).mean()
+
+    # ======================================================
+    # GUARD
+    # ======================================================
+    required_cols = {"Open", "High", "Low", "Close", "Volume"}
+    if not required_cols.issubset(df.columns):
+        print(f"Invalid columns {ticker}: {df.columns.tolist()}")
+        return None
+
+    # Close HARUS Series
+    if isinstance(df["Close"], pd.DataFrame):
+        print(f"Close still DataFrame {ticker}, skip")
+        return None
 
     return df
 
