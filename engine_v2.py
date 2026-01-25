@@ -25,6 +25,10 @@ BODY_THRESHOLD = 0.02
 CANDLE_DIST_TH = 5
 TOLERANCE = 0.02
 
+BASE_CONF = 6
+EXTRA_CONF = 2
+MAX_CONF = BASE_CONF + EXTRA_CONF
+
 # ======================================================
 # normalize yfinance
 # ======================================================
@@ -512,6 +516,7 @@ def process_stock(kode):
         price_yesterday = d1["Close"].iloc[-2]
         price_change = round((price_today/price_yesterday - 1)*100, 2)
         vol_behavior, vol_ratio = volume_behavior(d1)
+        gap_ema13 = round((price_today/d1["EMA13"].iloc[-1]-1)*100,2)
         gap_ema21 = round((price_today/d1["EMA21"].iloc[-1]-1)*100,2)
         gap_ema50 = round((price_today/d1["EMA50"].iloc[-1]-1)*100,2)
 
@@ -538,6 +543,7 @@ def process_stock(kode):
             "Kode": kode,
             "Price": price_today,
             "PriceChange%": price_change,
+            "Gap_EMA13%": gap_ema13,
             "Gap_EMA21%": gap_ema21,
             "Gap_EMA50%": gap_ema50,
             "MajorTrend": major,

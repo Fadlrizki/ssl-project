@@ -29,9 +29,9 @@ REQUIRED_COLS = {
 st.set_page_config(layout="wide")
 st.title("📊 IDX Price Action Screener V2")
 st.caption("Daily trend • Minor phase • Volume behavior")
-dfc = fetch_data("GOLF.JK", "1d", "5d")
-st.write(dfc.tail())
-st.write("LAST DATE:", dfc.index[-1])
+# dfc = fetch_data("GOLF.JK", "1d", "5d")
+# st.write(dfc.tail())
+# st.write("LAST DATE:", dfc.index[-1])
 
 
 # ======================================================
@@ -115,6 +115,16 @@ df = st.session_state["scan"].copy()
 # ======================================================
 st.markdown("### 🔎 Filter")
 
+cols = st.columns(3)
+filters = {
+    "MajorTrend": cols[0].multiselect("MajorTrend", sorted(df["MajorTrend"].unique())),
+    "MinorPhase": cols[1].multiselect("MinorPhase", sorted(df["MinorPhase"].unique())),
+    "SetupStLatest_Candleate": cols[2].multiselect("Latest_Candle", sorted(df["Latest_Candle"].unique())),
+}
+for col, val in filters.items():
+    if val:
+        df = df[df[col].isin(val)]
+
 c1, c2, c3, c4, c5 = st.columns(5)
 
 with c1:
@@ -157,7 +167,7 @@ with c5:
 st.subheader("📋 Screening Result")
 event = st.dataframe(
     df,
-    use_container_width=True,
+    width="stretch",
     selection_mode="single-row",
     on_select="rerun"
 )
@@ -189,7 +199,7 @@ if event.selection.rows:
     fig.add_scatter(x=dfc.index, y=dfc.EMA50, name="EMA50")
 
     fig.update_layout(height=500, xaxis_rangeslider_visible=False)
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
     st.table(pd.DataFrame({
         "Metric": [
