@@ -4,8 +4,7 @@ import plotly.graph_objects as go
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import os
 import pickle
-
-from engine import backtest_score
+from engine import build_probability_table_from_ticker,backtest
 from engine_v2 import process_stock, fetch_data, add_indicators
 
 # ======================================================
@@ -223,8 +222,58 @@ if event.selection.rows:
 # BACKTEST
 # ======================================================
 st.subheader("📊 Backtest")
+
 if event.selection.rows and st.button("Run Backtest"):
     kode = df.iloc[event.selection.rows[0]]["Kode"]
-    df_score, prob = backtest_score(f"{kode}.JK")
-    if df_score is not None:
-        st.dataframe(prob)
+    ticker = f"{kode}.JK"
+
+    # =========================
+    # 1️⃣ DECISION ENGINE
+    # =========================
+    st.subheader("🔮 Decision Engine (Besok Potensi Apa)")
+
+    result = backtest(f"{kode}.JK", mode="decision")
+
+    if result:
+        if result["Bias"] == "HIJAU":
+            st.success("🟢 BIAS HIJAU")
+        elif result["Bias"] == "MERAH":
+            st.error("🔴 BIAS MERAH")
+        else:
+            st.warning("⚠️ NO SETUP")
+
+        col1, col2, col3 = st.columns(3)
+        col1.metric("Prob Hijau", f"{result['ProbHijau']}%")
+        col2.metric("Prob Merah", f"{result['ProbMerah']}%")
+        col3.metric("Confidence", result["Confidence"])
+
+        with st.expander("🔍 Market Context"):
+            st.json(result["TodayState"])
+
+
+    # =========================
+    # 2️⃣ PROBABILITY TABLE
+    # =========================
+    st.subheader("📊 Probability Table (180 Hari)")
+
+    prob_table = build_probability_table_from_ticker(ticker, lookback=180)
+
+    if prob_table is None or prob_table.empty:
+        st.warning("Tidak ada data STRONG MajorTrend dalam 180 hari")
+    else:
+        st.dataframe(prob_table, use_container_width=True)
+
+    # =========================
+    # 3️⃣ STRATEGY BACKTEST
+    # =========================
+    st.subheader("📈 Strategy Backtest (Historical)")
+
+    df_strategy = backtest(f"{kode}.JK", mode="strategy")
+
+    if df_strategy is not None:
+        st.dataframe(
+            df_strategy.sort_index(ascending=False),
+            use_container_width=True
+        )
+
+

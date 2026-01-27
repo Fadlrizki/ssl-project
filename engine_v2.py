@@ -183,7 +183,7 @@ def ema_slope(series):
     return series.iloc[-1] - series.iloc[-SLOPE_WINDOW]
 
 # ======================================================
-# MAJOR TREND (1D) — SUDAH OK
+# MAJOR TREND (1D) 
 # ======================================================
 def major_trend_daily(df):
     last = df.iloc[-1]
@@ -261,32 +261,26 @@ def minor_phase_4h(df):
         return "PULLBACK_RECOVERED", why, 1 , 0 
 
     # =============================
-    # 3. TREND CONTINUE (NEW)
+    # 3 & 4. TREND CONTINUE (MERGED)
     # =============================
-    trend_new_rules = {
-        "Struktur sebelumnya bearish": was_bearish,
-        "Struktur EMA sekarang bullish": is_bullish,
+    trend_rules = {
+        "Struktur EMA bullish": is_bullish,
+        "Harga bertahan di atas EMA13": last["Close"] >= last["EMA13"],
         "EMA13 cross ke atas EMA21": ema13_cross,
         "Slope EMA21 positif": ema21_up,
         "EMA50 tidak turun": ema50_flat,
-        "Harga bertahan di atas EMA21": price_confirm
+        "Struktur sebelumnya bearish": was_bearish,
     }
 
-    passed = [k for k, v in trend_new_rules.items() if v]
+    passed = [k for k, v in trend_rules.items() if v]
     confidence = len(passed)
-    confidence_pct = round(confidence / 6 * 100)
+    confidence_pct = round(confidence / len(trend_rules) * 100)
 
-
-    if confidence == len(trend_new_rules):
-        why.extend(passed)
-        return "TREND_CONTINUE_NEW", why, confidence,confidence_pct
-
-    # =============================
-    # 4. TREND CONTINUE (NORMAL)
-    # =============================
+    # threshold minimal agar layak disebut TREND_CONTINUE
     if is_bullish and last["Close"] >= last["EMA13"]:
-        why.append("Struktur EMA bullish dan harga di atas EMA13")
-        return "TREND_CONTINUE", why, confidence , confidence_pct
+        why.extend(passed)
+        return "TREND_CONTINUE", why, confidence, confidence_pct
+
 
     # =============================
     # 5. OVER EXTEND
@@ -567,3 +561,77 @@ def process_stock(kode):
     except Exception as e:
         print(f"Failed process_stock: {kode} | {e}")
         return None
+
+# ======================================================
+# Market State
+# ======================================================
+def extract_market_state(df: pd.DataFrame, idx: int) -> dict:
+    """
+    Extract market state at historical index `idx`
+    based on data available UP TO that bar.
+    """
+
+    row = df.iloc[: idx + 1].copy()
+    last = row.iloc[-1]
+
+    # =========================
+    # MAJOR TREND
+    # =========================
+    if last["EMA13"] > last["EMA21"] > last["EMA50"]:
+        major = "STRONG"
+    else:
+        major = "INVALID"
+
+    # =========================
+    # MINOR PHASE
+    # (pakai kolom yang SUDAH ADA, fallback aman)
+    # =========================
+    minor = (
+        last["MinorPhase"]
+        if "MinorPhase" in row.columns
+        else "UNKNOWN"
+    )
+
+    # =========================
+    # RSI BUCKET
+    # =========================
+    rsi = last["RSI"]
+    if rsi < 30:
+        rsi_bucket = "<30"
+    elif rsi <= 70:
+        rsi_bucket = "30-70"
+    else:
+        rsi_bucket = ">70"
+
+    # =========================
+    # VOL BEHAVIOR (HISTORICAL)
+    # =========================
+    if "VOL_RATIO" in row.columns:
+        vr = last["VOL_RATIO"]
+        if vr < 0.8:
+            vol_behavior = "VOL_ABSORPTION"
+        elif vr > 1.5:
+            vol_behavior = "VOL_DISTRIBUTION"
+        else:
+            vol_behavior = "VOL_NEUTRAL"
+    else:
+        vol_behavior = "VOL_NEUTRAL"
+
+    # =========================
+    # LATEST CANDLE
+    # =========================
+    latest_candle = (
+        last["Latest_Candle"]
+        if "Latest_Candle" in row.columns
+        else "UNKNOWN"
+    )
+
+    return {
+        "MajorTrend": major,
+        "MinorPhase": minor,
+        "RSI_BUCKET": rsi_bucket,
+        "VOL_BEHAVIOR": vol_behavior,
+        "latest_candle": latest_candle,
+        "Close": last["Close"]
+    }
+
