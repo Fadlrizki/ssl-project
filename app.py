@@ -34,9 +34,9 @@ REQUIRED_COLS = {
 st.set_page_config(layout="wide")
 st.title("📊 IDX Price Action Screener V2")
 st.caption("Daily trend • Minor phase • Volume behavior")
-dfc = fetch_data("MBMA.JK", "1d", "5d")
-st.write(dfc.tail())
-st.write("LAST DATE:", dfc.index[-1])
+# dfc = fetch_data("MBMA.JK", "1d", "5d")
+# st.write(dfc.tail())
+# st.write("LAST DATE:", dfc.index[-1])
 
 
 # ======================================================
@@ -128,7 +128,7 @@ def save_trigger_cache(df):
 if st.button("🗑️ Clear All Cache"):
     clear_cache()
     st.success("Cache berhasil dihapus. Silakan jalankan screening ulang.")
-    
+
 if st.button("🚀 Run Screening"):
     results = []
     progress = st.progress(0)
