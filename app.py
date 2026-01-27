@@ -271,7 +271,7 @@ st.subheader("📊 Backtest")
 if event.selection.rows and st.button("Run Backtest"):
     kode = df.iloc[event.selection.rows[0]]["Kode"]
     st.session_state["backtest_result"] = backtest(f"{kode}.JK", mode="decision")
-    st.session_state["backtest_strategy"] = backtest(f"{kode}.JK", mode="strategy")
+    # st.session_state["backtest_strategy"] = backtest(f"{kode}.JK", mode="strategy")
     st.session_state["prob_table"] = build_probability_table_from_ticker(f"{kode}.JK")
 
 # tampilkan hasil backtest jika ada
@@ -331,10 +331,10 @@ if "prob_table" in st.session_state:
     else:
         st.dataframe(prob_table, use_container_width=True)
 
-if "backtest_strategy" in st.session_state and st.session_state["backtest_strategy"] is not None:
-    st.subheader("📈 Strategy Backtest (Historical)")
-    df_strategy = st.session_state["backtest_strategy"]
-    st.dataframe(df_strategy.sort_index(ascending=False), use_container_width=True)
+# if "backtest_strategy" in st.session_state and st.session_state["backtest_strategy"] is not None:
+#     st.subheader("📈 Strategy Backtest (Historical)")
+#     df_strategy = st.session_state["backtest_strategy"]
+#     st.dataframe(df_strategy.sort_index(ascending=False), use_container_width=True)
 
 
 # ======================================================
