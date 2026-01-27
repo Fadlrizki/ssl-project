@@ -206,13 +206,22 @@ def backtest_decision(ticker: str, lookback: int = 180):
 
         return {
             "Bias": bias,
-            "MatchType": "PARTIAL_NO_CANDLE",
-            "ProbHijau": clean_number(row["%Hijau"]),
-            "ProbMerah": clean_number(row["%Merah"]),
+            "ProbHijau": float(row["%Hijau"]),
+            "ProbMerah": float(row["%Merah"]),
             "Sample": int(row["Count"]),
             "Confidence": confidence_level(int(row["Count"])),
-            "TodayState": today_state
+
+            "DecisionContext": {
+                "MajorTrend": today_state["MajorTrend"],
+                "MinorPhase": row["MinorPhase"],
+                "RSI_BUCKET": row["RSI_BUCKET"],
+                "VOL_BEHAVIOR": row["VOL_BEHAVIOR"],
+                "latest_candle": row["latest_candle"],
+                "AvgVolRatio": row.get("AvgVolRatio"),
+                "MatchType": "EXACT"   
+            }
         }
+
 
 
     # ==========================
@@ -230,13 +239,21 @@ def backtest_decision(ticker: str, lookback: int = 180):
 
         return {
             "Bias": bias,
-            "MatchType": "PARTIAL_NO_CANDLE",
-            "ProbHijau": row["%Hijau"],
-            "ProbMerah": row["%Merah"],
+            "ProbHijau": float(row["%Hijau"]),
+            "ProbMerah": float(row["%Merah"]),
             "Sample": int(row["Count"]),
             "Confidence": confidence_level(int(row["Count"])),
-            "TodayState": today_state
+            "DecisionContext": {
+                "MajorTrend": today_state["MajorTrend"],
+                "MinorPhase": row["MinorPhase"],
+                "RSI_BUCKET": row["RSI_BUCKET"],
+                "VOL_BEHAVIOR": row["VOL_BEHAVIOR"],
+                "latest_candle": row["latest_candle"],
+                "AvgVolRatio": row.get("AvgVolRatio"),
+                "MatchType": "PARTIAL_NO_CANDLE"
+            }
         }
+
 
     # ==========================
     # 3️⃣ FALLBACK DEBUG

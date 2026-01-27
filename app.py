@@ -222,18 +222,19 @@ if event.selection.rows:
 # BACKTEST
 # ======================================================
 st.subheader("📊 Backtest")
+
 if event.selection.rows and st.button("Run Backtest"):
     kode = df.iloc[event.selection.rows[0]]["Kode"]
 
     result = backtest(f"{kode}.JK", mode="decision")
 
     # =========================
-    # 📌 DECISION OUTPUT
+    # 🔮 DECISION RESULT (PREDIKSI BESOK)
     # =========================
-    st.subheader("🧠 Decision Result")
+    st.subheader("🔮 Prediksi Market Besok")
 
     if result is None:
-        st.warning("⚠️ Tidak ada hasil")
+        st.warning("⚠️ Tidak ada hasil decision")
 
     else:
         bias = result.get("Bias")
@@ -241,47 +242,67 @@ if event.selection.rows and st.button("Run Backtest"):
         if bias in ["HIJAU", "MERAH"]:
             col1, col2, col3 = st.columns(3)
 
-            col1.metric(
+            col1.metric("Bias", bias)
+            col2.metric(
                 "Prob Hijau",
                 f"{result.get('ProbHijau', 0)}%"
             )
-            col2.metric(
+            col3.metric(
                 "Prob Merah",
                 f"{result.get('ProbMerah', 0)}%"
             )
-            col3.metric(
-                "Confidence",
-                result.get("Confidence", "-")
+
+            st.caption(
+                f"Sample historis: {result.get('Sample', '-')}"
+                f" | Confidence: {result.get('Confidence', '-')}"
             )
 
         elif bias == "NO_MATCH":
-            st.warning("⚠️ NO MATCH dengan data historis")
-            st.json(result["TodayState"])
+            st.warning("⚠️ Tidak ditemukan kondisi historis yang relevan untuk prediksi BESOK")
 
         elif bias == "NO_MODEL":
-            st.warning("⚠️ MODEL BELUM TERBENTUK")
-            st.json(result["TodayState"])
+            st.warning("⚠️ Model probabilitas belum terbentuk (data historis kurang)")
 
         elif bias == "NO_SETUP":
-            st.info("ℹ️ MARKET TIDAK DALAM KONDISI SETUP")
-            st.json(result["TodayState"])
+            st.info("ℹ️ Tidak ada setup historis valid untuk prediksi")
 
         else:
-            st.warning("⚠️ HASIL TIDAK DIKENAL")
+            st.warning("⚠️ Hasil decision tidak dikenali")
             st.json(result)
-    # =========================
-    # 🧠 DECISION DETAIL
-    # =========================
-    if result and "TodayState" in result:
-        st.subheader("📌 Kondisi Market Hari Ini")
 
-        today_df = (
-            pd.DataFrame(result["TodayState"], index=["Today"])
-            .T
-            .rename(columns={"Today": "Value"})
+    # =========================
+    # 🧠 DECISION CONTEXT (HISTORICAL MATCH)
+    # =========================
+    if result and "DecisionContext" in result:
+        st.subheader("🧠 Konteks Market")
+
+        ctx = result["DecisionContext"]
+
+        ctx_df = pd.DataFrame(
+            {
+                "Value": [
+                    ctx.get("MajorTrend"),
+                    ctx.get("MinorPhase"),
+                    ctx.get("RSI_BUCKET"),
+                    ctx.get("VOL_BEHAVIOR"),
+                    ctx.get("latest_candle"),
+                    ctx.get("AvgVolRatio"),
+                    ctx.get("MatchType"),
+                ]
+            },
+            index=[
+                "Major Trend",
+                "Minor Phase",
+                "RSI Bucket",
+                "Volume Behavior",
+                "Candle Terakhir",
+                "Avg Volume Ratio",
+                "Match Type",
+            ]
         )
 
-        st.table(today_df)
+        st.table(ctx_df)
+
 
 
     # =========================
