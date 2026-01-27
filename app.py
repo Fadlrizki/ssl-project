@@ -269,6 +269,20 @@ if event.selection.rows and st.button("Run Backtest"):
         else:
             st.warning("⚠️ HASIL TIDAK DIKENAL")
             st.json(result)
+    # =========================
+    # 🧠 DECISION DETAIL
+    # =========================
+    if result and "TodayState" in result:
+        st.subheader("📌 Kondisi Market Hari Ini")
+
+        today_df = (
+            pd.DataFrame(result["TodayState"], index=["Today"])
+            .T
+            .rename(columns={"Today": "Value"})
+        )
+
+        st.table(today_df)
+
 
     # =========================
     # 📊 PROBABILITY TABLE
