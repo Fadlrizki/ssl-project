@@ -52,6 +52,36 @@ def save_cache(df, path):
     with open(path, "wb") as f:
         pickle.dump(df, f)
 
+def save_trigger_cache(df):
+    with open(TRIGGER_CACHE, "wb") as f:
+        pickle.dump(df, f)
+
+def run_trigger_screening(codes, use_cache=True):
+    if use_cache:
+        cached = load_trigger_cache()
+        if not cached.empty:
+            return cached
+
+    hijau_results = []
+    for kode in codes:
+        try:
+            result = backtest(f"{kode}.JK", mode="decision")
+            if result and result.get("Bias") == "HIJAU":
+                hijau_results.append({
+                    "Kode": kode,
+                    "ProbHijau": result.get("ProbHijau"),
+                    "ProbMerah": result.get("ProbMerah"),
+                    "Sample": result.get("Sample"),
+                    "Confidence": result.get("Confidence"),
+                    "MatchType": result.get("DecisionContext", {}).get("MatchType")
+                })
+        except Exception:
+            continue
+
+    df_hijau = pd.DataFrame(hijau_results)
+    save_trigger_cache(df_hijau)
+    return df_hijau
+
 # ======================================================
 # LOAD SAHAM
 # ======================================================
@@ -59,6 +89,20 @@ saham_df = pd.read_excel(EXCEL_FILE)
 codes = saham_df[KODE_COLUMN].dropna().unique().tolist()
 
 cached_df = load_cache_safe(CACHE_SCREENING)
+
+TRIGGER_CACHE = f"trigger_cache_{CACHE_VERSION}.pkl"
+
+def load_trigger_cache():
+    if os.path.exists(TRIGGER_CACHE):
+        try:
+            return pickle.load(open(TRIGGER_CACHE, "rb"))
+        except Exception:
+            return pd.DataFrame()
+    return pd.DataFrame()
+
+def save_trigger_cache(df):
+    with open(TRIGGER_CACHE, "wb") as f:
+        pickle.dump(df, f)
 
 # ======================================================
 # RUN SCREENING
@@ -218,6 +262,7 @@ if event.selection.rows:
         ]
     }))
 
+
 # ======================================================
 # BACKTEST
 # ======================================================
@@ -225,71 +270,47 @@ st.subheader("📊 Backtest")
 
 if event.selection.rows and st.button("Run Backtest"):
     kode = df.iloc[event.selection.rows[0]]["Kode"]
+    st.session_state["backtest_result"] = backtest(f"{kode}.JK", mode="decision")
+    st.session_state["backtest_strategy"] = backtest(f"{kode}.JK", mode="strategy")
+    st.session_state["prob_table"] = build_probability_table_from_ticker(f"{kode}.JK")
 
-    result = backtest(f"{kode}.JK", mode="decision")
-
-    # =========================
-    # 🔮 DECISION RESULT (PREDIKSI BESOK)
-    # =========================
+# tampilkan hasil backtest jika ada
+if "backtest_result" in st.session_state:
+    result = st.session_state["backtest_result"]
     st.subheader("🔮 Prediksi Market Besok")
-
-    if result is None:
-        st.warning("⚠️ Tidak ada hasil decision")
-
-    else:
+    if result:
         bias = result.get("Bias")
-
         if bias in ["HIJAU", "MERAH"]:
             col1, col2, col3 = st.columns(3)
-
             col1.metric("Bias", bias)
-            col2.metric(
-                "Prob Hijau",
-                f"{result.get('ProbHijau', 0)}%"
-            )
-            col3.metric(
-                "Prob Merah",
-                f"{result.get('ProbMerah', 0)}%"
-            )
-
+            col2.metric("Prob Hijau", f"{result.get('ProbHijau', 0)}%")
+            col3.metric("Prob Merah", f"{result.get('ProbMerah', 0)}%")
             st.caption(
                 f"Sample historis: {result.get('Sample', '-')}"
                 f" | Confidence: {result.get('Confidence', '-')}"
             )
-
         elif bias == "NO_MATCH":
-            st.warning("⚠️ Tidak ditemukan kondisi historis yang relevan untuk prediksi BESOK")
-
+            st.warning("⚠️ Tidak ditemukan kondisi historis relevan")
         elif bias == "NO_MODEL":
-            st.warning("⚠️ Model probabilitas belum terbentuk (data historis kurang)")
-
+            st.warning("⚠️ Model probabilitas belum terbentuk")
         elif bias == "NO_SETUP":
-            st.info("ℹ️ Tidak ada setup historis valid untuk prediksi")
-
+            st.info("ℹ️ Tidak ada setup valid")
         else:
-            st.warning("⚠️ Hasil decision tidak dikenali")
             st.json(result)
 
-    # =========================
-    # 🧠 DECISION CONTEXT (HISTORICAL MATCH)
-    # =========================
     if result and "DecisionContext" in result:
         st.subheader("🧠 Konteks Market")
-
         ctx = result["DecisionContext"]
-
         ctx_df = pd.DataFrame(
-            {
-                "Value": [
-                    ctx.get("MajorTrend"),
-                    ctx.get("MinorPhase"),
-                    ctx.get("RSI_BUCKET"),
-                    ctx.get("VOL_BEHAVIOR"),
-                    ctx.get("latest_candle"),
-                    ctx.get("AvgVolRatio"),
-                    ctx.get("MatchType"),
-                ]
-            },
+            {"Value": [
+                ctx.get("MajorTrend"),
+                ctx.get("MinorPhase"),
+                ctx.get("RSI_BUCKET"),
+                ctx.get("VOL_BEHAVIOR"),
+                ctx.get("latest_candle"),
+                ctx.get("AvgVolRatio"),
+                ctx.get("MatchType"),
+            ]},
             index=[
                 "Major Trend",
                 "Minor Phase",
@@ -300,33 +321,33 @@ if event.selection.rows and st.button("Run Backtest"):
                 "Match Type",
             ]
         )
-
         st.table(ctx_df)
 
-
-
-    # =========================
-    # 📊 PROBABILITY TABLE
-    # =========================
+if "prob_table" in st.session_state:
+    prob_table = st.session_state["prob_table"]
     st.subheader("📊 Probability Table (180 Hari)")
-    prob_table = build_probability_table_from_ticker(f"{kode}.JK")
-
     if prob_table is None or prob_table.empty:
         st.warning("Tidak ada data STRONG MajorTrend dalam 180 hari")
     else:
         st.dataframe(prob_table, use_container_width=True)
 
-    # =========================
-    # 3️⃣ STRATEGY BACKTEST
-    # =========================
+if "backtest_strategy" in st.session_state and st.session_state["backtest_strategy"] is not None:
     st.subheader("📈 Strategy Backtest (Historical)")
-
-    df_strategy = backtest(f"{kode}.JK", mode="strategy")
-
-    if df_strategy is not None:
-        st.dataframe(
-            df_strategy.sort_index(ascending=False),
-            use_container_width=True
-        )
+    df_strategy = st.session_state["backtest_strategy"]
+    st.dataframe(df_strategy.sort_index(ascending=False), use_container_width=True)
 
 
+# ======================================================
+# TRIGGER SCREENING
+# ======================================================
+if st.button("🔔 Run Trigger Screening(WARNING!!!)"):
+    df_hijau = run_trigger_screening(codes, use_cache=False)  # paksa refresh
+    st.session_state["trigger_result"] = df_hijau
+
+if "trigger_result" in st.session_state:
+    df_hijau = st.session_state["trigger_result"]
+    st.subheader("🌱 Emiten dengan Bias HIJAU untuk Besok")
+    if not df_hijau.empty:
+        st.dataframe(df_hijau, use_container_width=True)
+    else:
+        st.info("Tidak ada emiten dengan Bias HIJAU untuk besok.")

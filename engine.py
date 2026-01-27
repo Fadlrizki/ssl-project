@@ -8,6 +8,27 @@ import pandas as pd
 import numpy as np
 
 from engine_v2 import fetch_data, add_indicators, extract_market_state,latest_candle_info
+import os, pickle
+
+# ======================================================
+# HELPERS
+# ======================================================
+CACHE_VERSION = "v3"   # atau versi sesuai kebutuhan
+PROB_CACHE = f"prob_cache_{CACHE_VERSION}.pkl"
+
+
+def load_prob_cache():
+    if os.path.exists(PROB_CACHE):
+        try:
+            return pickle.load(open(PROB_CACHE, "rb"))
+        except Exception:
+            return {}
+    return {}
+
+def save_prob_cache(cache):
+    with open(PROB_CACHE, "wb") as f:
+        pickle.dump(cache, f)
+
 
 def clean_number(x):
     if x is None or pd.isna(x):
@@ -390,41 +411,38 @@ def minor_phase_daily_at_index(df, idx):
 
 
 def build_probability_table_from_ticker(ticker: str, lookback: int = 180):
+    # cek cache dulu
+    prob_cache = load_prob_cache()
+    if ticker in prob_cache:
+        return prob_cache[ticker]
+
     df = fetch_data(ticker)
     if df is None or len(df) < lookback + 2:
         return None
 
     df = add_indicators(df)
-
     states = []
     start = len(df) - lookback - 1
     end = len(df) - 1
 
     for i in range(start, end):
         state = extract_market_state(df, i)
-
-        # ============================
-        # CANDLE & PHASE
-        # ============================
         state["latest_candle"] = candle_label_at_index(df, i)
         state["MinorPhase"] = minor_phase_daily_at_index(df, i)
-
-        # ============================
-        # VOLUME (CANDLE-AWARE)
-        # ============================
         vol_label, vol_ratio = volume_behavior_at_index(df, i)
         state["VOL_BEHAVIOR"] = vol_label
         state["VOL_RATIO"] = vol_ratio
-
-        # ============================
-        # SAFETY
-        # ============================
         if "Close" not in state:
             state["Close"] = df.iloc[i]["Close"]
-
         states.append(state)
 
     df_states = pd.DataFrame(states)
+    df_prob = build_probability_table(df_states)
 
-    return build_probability_table(df_states)
+    # simpan ke cache
+    prob_cache[ticker] = df_prob
+    save_prob_cache(prob_cache)
+
+    return df_prob
+
 
