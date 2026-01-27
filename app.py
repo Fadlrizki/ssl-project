@@ -222,41 +222,59 @@ if event.selection.rows:
 # BACKTEST
 # ======================================================
 st.subheader("📊 Backtest")
-
 if event.selection.rows and st.button("Run Backtest"):
     kode = df.iloc[event.selection.rows[0]]["Kode"]
-    ticker = f"{kode}.JK"
-
-    # =========================
-    # 1️⃣ DECISION ENGINE
-    # =========================
-    st.subheader("🔮 Decision Engine (Besok Potensi Apa)")
 
     result = backtest(f"{kode}.JK", mode="decision")
 
-    if result:
-        if result["Bias"] == "HIJAU":
-            st.success("🟢 BIAS HIJAU")
-        elif result["Bias"] == "MERAH":
-            st.error("🔴 BIAS MERAH")
-        else:
-            st.warning("⚠️ NO SETUP")
+    # =========================
+    # 📌 DECISION OUTPUT
+    # =========================
+    st.subheader("🧠 Decision Result")
 
-        col1, col2, col3 = st.columns(3)
-        col1.metric("Prob Hijau", f"{result['ProbHijau']}%")
-        col2.metric("Prob Merah", f"{result['ProbMerah']}%")
-        col3.metric("Confidence", result["Confidence"])
+    if result is None:
+        st.warning("⚠️ Tidak ada hasil")
 
-        with st.expander("🔍 Market Context"):
+    else:
+        bias = result.get("Bias")
+
+        if bias in ["HIJAU", "MERAH"]:
+            col1, col2, col3 = st.columns(3)
+
+            col1.metric(
+                "Prob Hijau",
+                f"{result.get('ProbHijau', 0)}%"
+            )
+            col2.metric(
+                "Prob Merah",
+                f"{result.get('ProbMerah', 0)}%"
+            )
+            col3.metric(
+                "Confidence",
+                result.get("Confidence", "-")
+            )
+
+        elif bias == "NO_MATCH":
+            st.warning("⚠️ NO MATCH dengan data historis")
             st.json(result["TodayState"])
 
+        elif bias == "NO_MODEL":
+            st.warning("⚠️ MODEL BELUM TERBENTUK")
+            st.json(result["TodayState"])
+
+        elif bias == "NO_SETUP":
+            st.info("ℹ️ MARKET TIDAK DALAM KONDISI SETUP")
+            st.json(result["TodayState"])
+
+        else:
+            st.warning("⚠️ HASIL TIDAK DIKENAL")
+            st.json(result)
 
     # =========================
-    # 2️⃣ PROBABILITY TABLE
+    # 📊 PROBABILITY TABLE
     # =========================
     st.subheader("📊 Probability Table (180 Hari)")
-
-    prob_table = build_probability_table_from_ticker(ticker, lookback=180)
+    prob_table = build_probability_table_from_ticker(f"{kode}.JK")
 
     if prob_table is None or prob_table.empty:
         st.warning("Tidak ada data STRONG MajorTrend dalam 180 hari")
