@@ -10,6 +10,12 @@ from engine_v2 import process_stock, fetch_data, add_indicators
 # ======================================================
 # CONFIG
 # ======================================================
+CACHE_VERSION = "v3"
+CACHE_SCREENING = f"screening_cache_{CACHE_VERSION}.pkl"
+TRIGGER_CACHE = f"trigger_cache_{CACHE_VERSION}.pkl"
+PROB_CACHE = f"prob_cache_{CACHE_VERSION}.pkl"   
+
+
 EXCEL_FILE = "daftar_saham.xlsx"
 KODE_COLUMN = "Kode"
 MAX_WORKERS = 8
@@ -28,14 +34,26 @@ REQUIRED_COLS = {
 st.set_page_config(layout="wide")
 st.title("📊 IDX Price Action Screener V2")
 st.caption("Daily trend • Minor phase • Volume behavior")
-# dfc = fetch_data("GOLF.JK", "1d", "5d")
-# st.write(dfc.tail())
-# st.write("LAST DATE:", dfc.index[-1])
+dfc = fetch_data("MBMA.JK", "1d", "5d")
+st.write(dfc.tail())
+st.write("LAST DATE:", dfc.index[-1])
 
 
 # ======================================================
 # HELPERS
 # ======================================================
+
+def clear_cache():
+    # hapus file cache screening
+    if os.path.exists(CACHE_SCREENING):
+        os.remove(CACHE_SCREENING)
+    # hapus file cache trigger
+    if os.path.exists(TRIGGER_CACHE):
+        os.remove(TRIGGER_CACHE)
+    # hapus file cache probability
+    if os.path.exists(PROB_CACHE):
+        os.remove(PROB_CACHE)
+
 def load_cache_safe(path):
     if not os.path.exists(path):
         return pd.DataFrame()
@@ -107,6 +125,10 @@ def save_trigger_cache(df):
 # ======================================================
 # RUN SCREENING
 # ======================================================
+if st.button("🗑️ Clear All Cache"):
+    clear_cache()
+    st.success("Cache berhasil dihapus. Silakan jalankan screening ulang.")
+    
 if st.button("🚀 Run Screening"):
     results = []
     progress = st.progress(0)
