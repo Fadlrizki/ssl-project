@@ -3,7 +3,7 @@ import numpy as np
 import yfinance as yf
 import os
 import pickle
-import datetime
+# import datetime
 
 
 # ======================================================
@@ -607,8 +607,8 @@ def process_stock(kode):
         # =========================
         return {
             "Kode": kode,
-            "Ticker": ticker,
-            "ProcessTime": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            # "Ticker": ticker,
+            # "ProcessTime": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "Price": price_today,
             "PriceChange%": price_change,
             "Gap_EMA13%": gap_ema13,
