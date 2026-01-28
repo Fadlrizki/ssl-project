@@ -10,6 +10,7 @@ from engine_v2 import process_stock, fetch_data, add_indicators
 # ======================================================
 # CONFIG
 # ======================================================
+
 CACHE_VERSION = "v3"
 CACHE_SCREENING = f"screening_cache_{CACHE_VERSION}.pkl"
 TRIGGER_CACHE = f"trigger_cache_{CACHE_VERSION}.pkl"
@@ -19,9 +20,6 @@ PROB_CACHE = f"prob_cache_{CACHE_VERSION}.pkl"
 EXCEL_FILE = "daftar_saham.xlsx"
 KODE_COLUMN = "Kode"
 MAX_WORKERS = 8
-
-CACHE_VERSION = "v3"
-CACHE_SCREENING = f"screening_cache_{CACHE_VERSION}.pkl"
 
 REQUIRED_COLS = {
     "Kode", "MajorTrend", "MinorPhase", "SetupState",
@@ -34,7 +32,7 @@ REQUIRED_COLS = {
 st.set_page_config(layout="wide")
 st.title("📊 IDX Price Action Screener V2")
 st.caption("Daily trend • Minor phase • Volume behavior")
-# dfc = fetch_data("AISA.JK", "1d", "5d")
+# dfc = fetch_data("MBMA.JK", "1d", "5d")
 # st.write(dfc.tail())
 # st.write("LAST DATE:", dfc.index[-1])
 
@@ -107,8 +105,6 @@ saham_df = pd.read_excel(EXCEL_FILE)
 codes = saham_df[KODE_COLUMN].dropna().unique().tolist()
 
 cached_df = load_cache_safe(CACHE_SCREENING)
-
-TRIGGER_CACHE = f"trigger_cache_{CACHE_VERSION}.pkl"
 
 def load_trigger_cache():
     if os.path.exists(TRIGGER_CACHE):

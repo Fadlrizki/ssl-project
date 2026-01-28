@@ -3,10 +3,6 @@ import numpy as np
 import yfinance as yf
 import os
 import pickle
-import shutil
-
-shutil.rmtree("data_cache", ignore_errors=True)
-
 
 # ======================================================
 # CONFIG
@@ -43,7 +39,7 @@ def normalize_yf_df(df):
     return df
 
 # ======================================================
-# CACHE
+# CACHE HELPERS
 # ======================================================
 CACHE_DIR = "data_cache"
 os.makedirs(CACHE_DIR, exist_ok=True)
@@ -77,11 +73,10 @@ def is_cache_fresh(df, interval="1d"):
         return False
 
     last_cached_date = df.index[-1].date()
-
     now = pd.Timestamp.now(tz="Asia/Jakarta")
 
-    # Jika weekend → last trading day = Jumat
-    if now.weekday() >= 5:  # Sabtu / Minggu
+    # Tentukan last trading day (weekend → Jumat)
+    if now.weekday() >= 5:  
         last_trading_day = (now - pd.offsets.BDay(1)).date()
     else:
         last_trading_day = now.date()
@@ -91,11 +86,16 @@ def is_cache_fresh(df, interval="1d"):
 # ======================================================
 # FETCH DATA
 # ======================================================
-def fetch_data(ticker, interval="1d", period="12mo"):
+def fetch_data(ticker, interval="1d", period="12mo", force_refresh=True):
+    """
+    Ambil data OHLCV dari Yahoo Finance dengan cache yang konsisten.
+    force_refresh=True → abaikan cache, selalu fetch ulang.
+    """
     # 1️⃣ Coba load cache
-    cached = load_cache(ticker, interval)
-    if cached is not None and is_cache_fresh(cached, interval):
-        return cached.copy()
+    if not force_refresh:
+        cached = load_cache(ticker, interval)
+        if cached is not None and is_cache_fresh(cached):
+            return cached.copy()
 
     # 2️⃣ Fetch ulang dari Yahoo
     try:
@@ -109,30 +109,24 @@ def fetch_data(ticker, interval="1d", period="12mo"):
             auto_adjust=False
         )
         df = normalize_yf_df(df)
+        df = df.copy()
+        df.index = pd.to_datetime(df.index)
+        if df.index.tz is None:
+            df.index = df.index.tz_localize("UTC").tz_convert("Asia/Jakarta")
+        else:
+            df.index = df.index.tz_convert("Asia/Jakarta")
+
+        # Pastikan kolom flat
+        if isinstance(df.columns, pd.MultiIndex):
+            df.columns = df.columns.get_level_values(0)
+        df = df.loc[:, ~df.columns.duplicated()]
+
+        # Simpan cache baru
+        save_cache(ticker, interval, df)
+        return df
     except Exception as e:
         print(f"Failed download {ticker} | {e}")
         return None
-
-    if df is None or df.empty:
-        return None
-
-    # 3️⃣ Rapikan index
-    df = df.copy()
-    df.index = pd.to_datetime(df.index)
-
-    # 👉 Tambahkan konversi timezone di sini
-    try:
-        df.index = df.index.tz_localize("UTC").tz_convert("Asia/Jakarta")
-    except Exception:
-        # kalau sudah ada timezone, langsung convert
-        df.index = df.index.tz_convert("Asia/Jakarta")
-
-    # 4️⃣ Simpan cache baru
-    save_cache(ticker, interval, df)
-
-    return df
-
-
 
 # ======================================================
 # INDICATORS
