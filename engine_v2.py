@@ -37,6 +37,7 @@ def normalize_yf_df(df):
     
     df = df.loc[:, ~df.columns.duplicated()]
     return df
+    
 
 # ======================================================
 # CACHE HELPERS
@@ -99,6 +100,7 @@ def fetch_data(ticker, interval="1d", period="12mo", force_refresh=True):
 
     # 2️⃣ Fetch ulang dari Yahoo
     try:
+        # 1️⃣ Coba dengan group_by="column"
         df = yf.download(
             ticker,
             interval=interval,
@@ -108,7 +110,24 @@ def fetch_data(ticker, interval="1d", period="12mo", force_refresh=True):
             group_by="column",
             auto_adjust=False
         )
-        df = normalize_yf_df(df)
+
+        # 2️⃣ Kalau kosong, coba ulang tanpa group_by
+        if df is None or df.empty:
+            df = yf.download(
+                ticker,
+                interval=interval,
+                period=period,
+                progress=False,
+                threads=False,
+                auto_adjust=False
+            )
+
+        # 3️⃣ Kalau tetap kosong → ticker tidak ada
+        if df is None or df.empty:
+            print(f"No data for {ticker} (possibly delisted)")
+            return None
+
+        # Rapikan index & timezone
         df = df.copy()
         df.index = pd.to_datetime(df.index)
         if df.index.tz is None:
@@ -116,17 +135,22 @@ def fetch_data(ticker, interval="1d", period="12mo", force_refresh=True):
         else:
             df.index = df.index.tz_convert("Asia/Jakarta")
 
-        # Pastikan kolom flat
-        if isinstance(df.columns, pd.MultiIndex):
-            df.columns = df.columns.get_level_values(0)
-        df = df.loc[:, ~df.columns.duplicated()]
+        # Normalisasi kolom
+        df = normalize_yf_df(df)
+
+        # Fallback: kalau tidak ada 'Close', pakai 'Adj Close'
+        if "Close" not in df.columns and "Adj Close" in df.columns:
+            df["Close"] = df["Adj Close"]
 
         # Simpan cache baru
         save_cache(ticker, interval, df)
         return df
+
     except Exception as e:
         print(f"Failed download {ticker} | {e}")
         return None
+
+
 
 # ======================================================
 # INDICATORS
