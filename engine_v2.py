@@ -3,6 +3,8 @@ import numpy as np
 import yfinance as yf
 import os
 import pickle
+import datetime
+
 
 # ======================================================
 # CONFIG
@@ -28,15 +30,24 @@ MAX_CONF = BASE_CONF + EXTRA_CONF
 # ======================================================
 # normalize yfinance
 # ======================================================
-def normalize_yf_df(df):
+def normalize_yf_df(df, ticker=None):
     """
-    Pastikan df OHLCV flat (bukan multi-index column)
+    Normalize yfinance OHLCV safely.
+    Jika MultiIndex, WAJIB ambil level ticker.
     """
     if isinstance(df.columns, pd.MultiIndex):
-        df.columns = df.columns.get_level_values(0)
-    
+        if ticker is None:
+            raise ValueError("Ticker wajib diberikan untuk MultiIndex dataframe")
+
+        # Ambil kolom milik ticker ini saja
+        if ticker in df.columns.get_level_values(1):
+            df = df.xs(ticker, axis=1, level=1)
+        else:
+            raise ValueError(f"Ticker {ticker} tidak ditemukan di dataframe")
+
     df = df.loc[:, ~df.columns.duplicated()]
     return df
+
     
 
 # ======================================================
@@ -45,39 +56,36 @@ def normalize_yf_df(df):
 CACHE_DIR = "data_cache"
 os.makedirs(CACHE_DIR, exist_ok=True)
 
-def _cache_path(ticker, interval):
+def _cache_path(ticker, interval, period):
     safe = ticker.replace(".", "_")
-    return os.path.join(CACHE_DIR, f"{safe}_{interval}.pkl")
+    return os.path.join(
+        CACHE_DIR,
+        f"{safe}_{interval}_{period}.pkl"
+    )
 
 
-def load_cache(ticker, interval):
-    path = _cache_path(ticker, interval)
-    
-    if os.path.exists(path):
-        try:
-            with open(path, "rb") as f:
-                df = pickle.load(f)
+def load_cache(ticker, interval, period):
+    path = _cache_path(ticker, interval, period)
+    if not os.path.exists(path):
+        return None
 
-            # 1️⃣ Pastikan dataframe tidak kosong
-            if df is None or df.empty:
-                return None
+    try:
+        with open(path, "rb") as f:
+            df = pickle.load(f)
 
-            # 3️⃣ Pastikan tanggal terakhir >= last trading day
-            last_date = df.index[-1].date()
-            today = pd.Timestamp.now(tz="Asia/Jakarta").date()
-            if last_date < today:
-                return None
-
-            return df
-        except Exception:
+        if df is None or df.empty:
             return None
-    return None
+
+        return df.copy(deep=True)
+    except Exception:
+        return None
 
 
-def save_cache(ticker, interval, df):
-    path = _cache_path(ticker, interval)
+def save_cache(ticker, interval, period, df):
+    path = _cache_path(ticker, interval, period)
     with open(path, "wb") as f:
         pickle.dump(df, f)
+
 
 def is_cache_fresh(df, interval="1d"):
     """
@@ -102,17 +110,12 @@ def is_cache_fresh(df, interval="1d"):
 # FETCH DATA
 # ======================================================
 def fetch_data(ticker, interval="1d", period="12mo", force_refresh=True):
-    """
-    Ambil data OHLCV dari Yahoo Finance dengan cache yang konsisten.
-    force_refresh=True → abaikan cache, selalu fetch ulang.
-    """
     if not force_refresh:
-        cached = load_cache(ticker, interval)
+        cached = load_cache(ticker, interval, period)
         if cached is not None and is_cache_fresh(cached):
-            return cached.copy()
+            return cached.copy(deep=True)
 
-    # 2️⃣ Fetch ulang dari Yahoo
-    for attempt in range(3):  # coba maksimal 2 kali
+    for attempt in range(2):
         try:
             df = yf.download(
                 ticker,
@@ -120,59 +123,27 @@ def fetch_data(ticker, interval="1d", period="12mo", force_refresh=True):
                 period=period,
                 progress=False,
                 threads=False,
-                group_by="column",   # tetap pakai column
                 auto_adjust=False
             )
 
-            # fallback: kalau kosong, coba ulang tanpa group_by
-            if df is None or df.empty:
-                df = yf.download(
-                    ticker,
-                    interval=interval,
-                    period=period,
-                    progress=False,
-                    threads=False,
-                    auto_adjust=False
-                )
-
-            if df is None or df.empty:
-                print(f"No data for {ticker} (possibly delisted)")
-                return None
-
-            # rapikan index & timezone
-            df = df.copy()
             df.index = pd.to_datetime(df.index)
-            if df.index.tz is None:
-                df.index = df.index.tz_localize("UTC").tz_convert("Asia/Jakarta")
-            else:
-                df.index = df.index.tz_convert("Asia/Jakarta")
+            df.index = df.index.tz_localize("UTC").tz_convert("Asia/Jakarta")
 
-            # normalisasi kolom
-            df = normalize_yf_df(df)
+            df = normalize_yf_df(df, ticker)
 
-            # fallback: kalau tidak ada 'Close', pakai 'Adj Close'
+
             if "Close" not in df.columns and "Adj Close" in df.columns:
                 df["Close"] = df["Adj Close"]
 
-            # guard: pastikan ada kolom Close
             if "Close" not in df.columns:
-                print(f"{ticker} tidak punya kolom Close")
                 return None
 
-            # guard: pastikan tanggal terakhir = last trading day
-            last_date = df.index[-1].date()
-            today = pd.Timestamp.now(tz="Asia/Jakarta").date()
-            if last_date < today and attempt == 0:
-                print(f"{ticker} cache basi, retry sekali lagi...")
-                continue  # ulang sekali lagi
-
-            save_cache(ticker, interval, df)
-            return df
+            save_cache(ticker, interval, period, df)
+            return df.copy(deep=True)
 
         except Exception as e:
-            print(f"Failed download {ticker} attempt {attempt+1} | {e}")
             if attempt == 0:
-                continue  # retry sekali lagi
+                continue
             return None
 
     return None
@@ -183,7 +154,7 @@ def fetch_data(ticker, interval="1d", period="12mo", force_refresh=True):
 # INDICATORS
 # ======================================================
 def add_indicators(df):
-    df = df.copy()
+    df = df.copy(deep=True)
 
     df["EMA13"] = df["Close"].ewm(span=EMA_FAST, adjust=False).mean()
     df["EMA21"] = df["Close"].ewm(span=EMA_MID, adjust=False).mean()
@@ -542,53 +513,102 @@ def process_stock(kode):
     ticker = f"{kode}.JK"
 
     try:
-        d1 = fetch_data(ticker, "1d", "12mo",force_refresh=True)
-        h4 = fetch_data(ticker, "4h", "6mo",force_refresh=True)
+        # =========================
+        # FETCH DATA
+        # =========================
+        d1 = fetch_data(ticker, "1d", "12mo", force_refresh=True)
+        h4 = fetch_data(ticker, "4h", "6mo", force_refresh=True)
 
-        if d1 is None:
+        if d1 is None or d1.empty:
             return None
 
-        if h4 is None:
-            print(f"{kode}: data 4h tidak tersedia, fallback ke daily")
-            h4 = d1.copy()  # atau skip analisis minor phase
-
-        d1 = add_indicators(d1)
-        h4 = add_indicators(h4)
+        # =========================
+        # DAILY PROCESS
+        # =========================
+        d1 = add_indicators(d1.copy(deep=True))
+        if d1 is None or d1.empty:
+            return None
 
         major = major_trend_daily(d1)
-        minor, why, confidence , confidence_pct= minor_phase_4h(h4)
-        setup = setup_state(minor)
-        stage2 = stage2_trigger(h4, setup)
 
-        price_today = d1["Close"].iloc[-1]
-        price_yesterday = d1["Close"].iloc[-2]
-        price_change = round((price_today/price_yesterday - 1)*100, 2)
+        # =========================
+        # 4H PROCESS (GUARDED)
+        # =========================
+        if h4 is not None and not h4.empty:
+            h4 = add_indicators(h4.copy(deep=True))
+            if h4 is not None and not h4.empty:
+                minor, why, confidence, confidence_pct = minor_phase_4h(h4)
+                setup = setup_state(minor)
+                stage2 = stage2_trigger(h4, setup)
+            else:
+                minor, why, confidence, confidence_pct = "NEUTRAL", ["4H invalid"], 0, 0
+                setup = "WAIT"
+                stage2 = False
+        else:
+            minor, why, confidence, confidence_pct = "NEUTRAL", ["4H unavailable"], 0, 0
+            setup = "WAIT"
+            stage2 = False
+
+        # =========================
+        # PRICE & METRICS (DAILY ONLY)
+        # =========================
+        price_today = float(d1["Close"].iloc[-1])
+        price_yesterday = float(d1["Close"].iloc[-2])
+        price_change = round((price_today / price_yesterday - 1) * 100, 2)
+
         vol_behavior, vol_ratio = volume_behavior(d1)
-        gap_ema13 = round((price_today/d1["EMA13"].iloc[-1]-1)*100,2)
-        gap_ema21 = round((price_today/d1["EMA21"].iloc[-1]-1)*100,2)
-        gap_ema50 = round((price_today/d1["EMA50"].iloc[-1]-1)*100,2)
 
-        rsi = d1["RSI"].iloc[-1]
-        stoch = d1["STOCH"].iloc[-1]
-        sma50 = d1["SMA50"].iloc[-1]
+        gap_ema13 = round((price_today / d1["EMA13"].iloc[-1] - 1) * 100, 2)
+        gap_ema21 = round((price_today / d1["EMA21"].iloc[-1] - 1) * 100, 2)
+        gap_ema50 = round((price_today / d1["EMA50"].iloc[-1] - 1) * 100, 2)
+
+        rsi = float(d1["RSI"].iloc[-1])
+        stoch = float(d1["STOCH"].iloc[-1])
+        sma50 = float(d1["SMA50"].iloc[-1])
         dist_to_sma50 = compute_dist_sma50(d1)
 
         candle_label, candle_red_breakdown, candle_green_approach = latest_candle_info(d1)
         candle_effect = 1 if candle_green_approach else -1 if candle_red_breakdown else 0
-        if minor == "TREND_CONTINUE_NEW" and vol_behavior == "VOL_ABSORPTION":
+
+        # =========================
+        # CONFIDENCE BOOST
+        # =========================
+        if minor == "TREND_CONTINUE" and vol_behavior == "VOL_ABSORPTION":
             confidence += 1
             why.append("Volume absorption mendukung kelanjutan trend")
             confidence_pct = round(confidence / 7 * 100)
-        if minor == "TREND_CONTINUE_NEW" and candle_label == "Hijau Kuat (Impulse)":
+
+        if minor == "TREND_CONTINUE" and candle_label == "Hijau Kuat (Impulse)":
             confidence += 1
             why.append("Impulse candle mendukung kelanjutan trend")
 
-
+        # =========================
+        # FINAL DECISION
+        # =========================
         final_dec = final_decision(major, minor, setup, stage2, vol_behavior)
 
+        # =========================
+        # HARD GUARD (ANTI DATA LEAK)
+        # =========================
+        if price_today <= 0 or price_today > 1_000_000:
+            print(f"INVALID PRICE {kode} {price_today}")
+            return None
 
+        # DEBUG TRACE (boleh dihapus nanti)
+        print(
+            kode,
+            ticker,
+            d1.index[-1],
+            price_today
+        )
+
+        # =========================
+        # RETURN RESULT
+        # =========================
         return {
             "Kode": kode,
+            "Ticker": ticker,
+            "ProcessTime": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "Price": price_today,
             "PriceChange%": price_change,
             "Gap_EMA13%": gap_ema13,
@@ -598,15 +618,15 @@ def process_stock(kode):
             "MinorPhase": minor,
             "WHY_MINOR": why,
             "MinorConfidence": confidence,
-            "MinorConfidence%" : confidence_pct,
+            "MinorConfidence%": confidence_pct,
             "SetupState": setup,
             "Stage2Valid": stage2,
             "VOL_BEHAVIOR": vol_behavior,
             "VOL_RATIO": vol_ratio,
-            "RSI": round(rsi,2),
-            "SMA50": round(sma50,2),
-            "Dist_to_SMA50": round(dist_to_sma50,2) if not np.isnan(dist_to_sma50) else np.nan,
-            "Stoch_K": round(stoch,2),
+            "RSI": round(rsi, 2),
+            "SMA50": round(sma50, 2),
+            "Dist_to_SMA50": round(dist_to_sma50, 2) if not np.isnan(dist_to_sma50) else np.nan,
+            "Stoch_K": round(stoch, 2),
             "Latest_Candle": candle_label,
             "Candle_Effect": candle_effect,
             "FinalDecision": final_dec
@@ -615,6 +635,7 @@ def process_stock(kode):
     except Exception as e:
         print(f"Failed process_stock: {kode} | {e}")
         return None
+
 
 # ======================================================
 # Market State

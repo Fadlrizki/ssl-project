@@ -32,8 +32,8 @@ REQUIRED_COLS = {
 st.set_page_config(layout="wide")
 st.title("📊 IDX Price Action Screener V2")
 st.caption("Daily trend • Minor phase • Volume behavior")
-# dfc = fetch_data("CTTH.JK", "1d", "12mo", force_refresh=True)
-# dfc2 = fetch_data("CTTH.JK", "4h", "6mo", force_refresh=True)
+# dfc = fetch_data("GUNA.JK", "1d", "12mo", force_refresh=True)
+# dfc2 = fetch_data("GUNA.JK", "4h", "1mo", force_refresh=True)
 # st.write("CTTH(DEBUG)")
 # st.write(dfc.tail(1).sort_index(ascending=False))
 # st.write("LAST DATE:", dfc.index[-1])
@@ -135,43 +135,43 @@ if st.button("🚀 Run Screening"):
     status = st.empty()
 
     with ThreadPoolExecutor(max_workers=MAX_WORKERS) as ex:
-        futures = {
-            ex.submit(process_stock, k): k
-            for k in codes
-            if cached_df.empty or k not in cached_df["Kode"].values
-        }
-
-        # pakai cache dulu
-        if not cached_df.empty:
-            results.extend(cached_df.to_dict("records"))
-
-        done = len(results)
+        futures = {ex.submit(process_stock, k): k for k in codes}
+        done = 0
         total = len(codes)
 
         for f in as_completed(futures):
             kode = futures[f]
             try:
                 r = f.result()
-                # ✅ Validasi hasil sebelum append
                 if r and "Kode" in r and "Price" in r:
+                    # tambahkan timestamp supaya unik
+                    r["ProcessTime"] = pd.Timestamp.now()
                     results.append(r)
-                    done += 1
             except Exception as e:
                 print(f"Error {kode}: {e}")
 
+            done += 1
             progress.progress(done / total)
             status.text(f"Processed {done}/{total}")
 
-    # ✅ Gabungkan cache + hasil baru dengan aman
     df_new = pd.DataFrame(results)
-    df_scan = pd.concat([cached_df, df_new], ignore_index=True)
 
-    # ✅ Drop duplikat berdasarkan Kode, ambil yang paling baru
-    df_scan = df_scan.drop_duplicates(subset=["Kode"], keep="last").reset_index(drop=True)
+    # gabungkan cache + hasil baru
+    if not cached_df.empty:
+        df_scan = pd.concat([cached_df, df_new], ignore_index=True)
+    else:
+        df_scan = df_new.copy()
+
+    # drop duplikat berdasarkan Kode, ambil yang paling baru
+    if "ProcessTime" in df_scan.columns:
+        df_scan = df_scan.sort_values("ProcessTime").drop_duplicates(subset=["Kode","Ticker"], keep="last").reset_index(drop=True)
+    else:
+        df_scan = df_scan.drop_duplicates(subset=["Kode","Ticker"], keep="last").reset_index(drop=True)
 
     save_cache(df_scan, CACHE_SCREENING)
     st.session_state["scan"] = df_scan
     st.success(f"Selesai: {len(df_scan)} saham valid")
+
 
 # ======================================================
 # GUARD
