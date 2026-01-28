@@ -162,11 +162,7 @@ if st.button("🚀 Run Screening"):
     else:
         df_scan = df_new.copy()
 
-    # drop duplikat berdasarkan Kode, ambil yang paling baru
-    if "ProcessTime" in df_scan.columns:
-        df_scan = df_scan.sort_values("ProcessTime").drop_duplicates(subset=["Kode","Ticker"], keep="last").reset_index(drop=True)
-    else:
-        df_scan = df_scan.drop_duplicates(subset=["Kode","Ticker"], keep="last").reset_index(drop=True)
+    df_scan = df_scan.drop_duplicates(subset=["Kode"], keep="last").reset_index(drop=True)
 
     save_cache(df_scan, CACHE_SCREENING)
     st.session_state["scan"] = df_scan
