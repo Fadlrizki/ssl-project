@@ -34,9 +34,9 @@ REQUIRED_COLS = {
 st.set_page_config(layout="wide")
 st.title("📊 IDX Price Action Screener V2")
 st.caption("Daily trend • Minor phase • Volume behavior")
-# dfc = fetch_data("MBMA.JK", "1d", "5d")
-# st.write(dfc.tail())
-# st.write("LAST DATE:", dfc.index[-1])
+dfc = fetch_data("AISA.JK", "1d", "5d")
+st.write(dfc.tail())
+st.write("LAST DATE:", dfc.index[-1])
 
 
 # ======================================================
@@ -244,8 +244,13 @@ if event.selection.rows:
     row = df.iloc[event.selection.rows[0]]
     kode = row["Kode"]
 
+if st.button("🗑️ Clear Cache"):
+    clear_cache()
+    st.success("Cache dihapus, silakan run ulang")
+
     dfc = fetch_data(f"{kode}.JK", "1d", "12mo")
     if dfc is None or dfc.empty:
+        st.caption(f"📅 Data terakhir: {dfc.index[-1].date()} | 💰 Close: {dfc['Close'].iloc[-1]}")
         st.warning("Data chart tidak tersedia")
         st.stop()
 

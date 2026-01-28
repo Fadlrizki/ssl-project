@@ -94,12 +94,10 @@ def is_cache_fresh(df, interval="1d"):
 def fetch_data(ticker, interval="1d", period="12mo"):
     # 1️⃣ Coba load cache
     cached = load_cache(ticker, interval)
-
-    # 2️⃣ Validasi cache berdasarkan tanggal
     if cached is not None and is_cache_fresh(cached, interval):
         return cached.copy()
 
-    # 3️⃣ Fetch ulang dari Yahoo
+    # 2️⃣ Fetch ulang dari Yahoo
     try:
         df = yf.download(
             ticker,
@@ -107,11 +105,10 @@ def fetch_data(ticker, interval="1d", period="12mo"):
             period=period,
             progress=False,
             threads=False,
-        group_by="column",
+            group_by="column",
             auto_adjust=False
         )
         df = normalize_yf_df(df)
-
     except Exception as e:
         print(f"Failed download {ticker} | {e}")
         return None
@@ -119,14 +116,22 @@ def fetch_data(ticker, interval="1d", period="12mo"):
     if df is None or df.empty:
         return None
 
-    # 4️⃣ Rapikan index
+    # 3️⃣ Rapikan index
     df = df.copy()
     df.index = pd.to_datetime(df.index)
 
-    # 5️⃣ Simpan cache baru
+    # 👉 Tambahkan konversi timezone di sini
+    try:
+        df.index = df.index.tz_localize("UTC").tz_convert("Asia/Jakarta")
+    except Exception:
+        # kalau sudah ada timezone, langsung convert
+        df.index = df.index.tz_convert("Asia/Jakarta")
+
+    # 4️⃣ Simpan cache baru
     save_cache(ticker, interval, df)
 
     return df
+
 
 
 # ======================================================
