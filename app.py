@@ -32,9 +32,13 @@ REQUIRED_COLS = {
 st.set_page_config(layout="wide")
 st.title("📊 IDX Price Action Screener V2")
 st.caption("Daily trend • Minor phase • Volume behavior")
-dfc = fetch_data("ALMI.JK", "1d", "5d")
-st.write(dfc.tail())
+dfc = fetch_data("CTTH.JK", "1d", "12mo", force_refresh=True)
+dfc2 = fetch_data("CTTH.JK", "4h", "6mo", force_refresh=True)
+st.write("CTTH(DEBUG)")
+st.write(dfc.tail(1).sort_index(ascending=False))
 st.write("LAST DATE:", dfc.index[-1])
+st.write(dfc2.tail(1).sort_index(ascending=False))
+st.write("LAST DATE:", dfc2.index[-1])
 
 
 # ======================================================
@@ -148,16 +152,23 @@ if st.button("🚀 Run Screening"):
             kode = futures[f]
             try:
                 r = f.result()
-                if r:
+                # ✅ Validasi hasil sebelum append
+                if r and "Kode" in r and "Price" in r:
                     results.append(r)
                     done += 1
-            except Exception:
-                pass
+            except Exception as e:
+                print(f"Error {kode}: {e}")
 
             progress.progress(done / total)
             status.text(f"Processed {done}/{total}")
 
-    df_scan = pd.DataFrame(results)
+    # ✅ Gabungkan cache + hasil baru dengan aman
+    df_new = pd.DataFrame(results)
+    df_scan = pd.concat([cached_df, df_new], ignore_index=True)
+
+    # ✅ Drop duplikat berdasarkan Kode, ambil yang paling baru
+    df_scan = df_scan.drop_duplicates(subset=["Kode"], keep="last").reset_index(drop=True)
+
     save_cache(df_scan, CACHE_SCREENING)
     st.session_state["scan"] = df_scan
     st.success(f"Selesai: {len(df_scan)} saham valid")

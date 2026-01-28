@@ -52,13 +52,27 @@ def _cache_path(ticker, interval):
 
 def load_cache(ticker, interval):
     path = _cache_path(ticker, interval)
+    
     if os.path.exists(path):
         try:
             with open(path, "rb") as f:
-                return pickle.load(f)
+                df = pickle.load(f)
+
+            # 1️⃣ Pastikan dataframe tidak kosong
+            if df is None or df.empty:
+                return None
+
+            # 3️⃣ Pastikan tanggal terakhir >= last trading day
+            last_date = df.index[-1].date()
+            today = pd.Timestamp.now(tz="Asia/Jakarta").date()
+            if last_date < today:
+                return None
+
+            return df
         except Exception:
             return None
     return None
+
 
 def save_cache(ticker, interval, df):
     path = _cache_path(ticker, interval)
@@ -92,63 +106,76 @@ def fetch_data(ticker, interval="1d", period="12mo", force_refresh=True):
     Ambil data OHLCV dari Yahoo Finance dengan cache yang konsisten.
     force_refresh=True → abaikan cache, selalu fetch ulang.
     """
-    # 1️⃣ Coba load cache
     if not force_refresh:
         cached = load_cache(ticker, interval)
         if cached is not None and is_cache_fresh(cached):
             return cached.copy()
 
     # 2️⃣ Fetch ulang dari Yahoo
-    try:
-        # 1️⃣ Coba dengan group_by="column"
-        df = yf.download(
-            ticker,
-            interval=interval,
-            period=period,
-            progress=False,
-            threads=False,
-            group_by="column",
-            auto_adjust=False
-        )
-
-        # 2️⃣ Kalau kosong, coba ulang tanpa group_by
-        if df is None or df.empty:
+    for attempt in range(3):  # coba maksimal 2 kali
+        try:
             df = yf.download(
                 ticker,
                 interval=interval,
                 period=period,
                 progress=False,
                 threads=False,
+                group_by="column",   # tetap pakai column
                 auto_adjust=False
             )
 
-        # 3️⃣ Kalau tetap kosong → ticker tidak ada
-        if df is None or df.empty:
-            print(f"No data for {ticker} (possibly delisted)")
+            # fallback: kalau kosong, coba ulang tanpa group_by
+            if df is None or df.empty:
+                df = yf.download(
+                    ticker,
+                    interval=interval,
+                    period=period,
+                    progress=False,
+                    threads=False,
+                    auto_adjust=False
+                )
+
+            if df is None or df.empty:
+                print(f"No data for {ticker} (possibly delisted)")
+                return None
+
+            # rapikan index & timezone
+            df = df.copy()
+            df.index = pd.to_datetime(df.index)
+            if df.index.tz is None:
+                df.index = df.index.tz_localize("UTC").tz_convert("Asia/Jakarta")
+            else:
+                df.index = df.index.tz_convert("Asia/Jakarta")
+
+            # normalisasi kolom
+            df = normalize_yf_df(df)
+
+            # fallback: kalau tidak ada 'Close', pakai 'Adj Close'
+            if "Close" not in df.columns and "Adj Close" in df.columns:
+                df["Close"] = df["Adj Close"]
+
+            # guard: pastikan ada kolom Close
+            if "Close" not in df.columns:
+                print(f"{ticker} tidak punya kolom Close")
+                return None
+
+            # guard: pastikan tanggal terakhir = last trading day
+            last_date = df.index[-1].date()
+            today = pd.Timestamp.now(tz="Asia/Jakarta").date()
+            if last_date < today and attempt == 0:
+                print(f"{ticker} cache basi, retry sekali lagi...")
+                continue  # ulang sekali lagi
+
+            save_cache(ticker, interval, df)
+            return df
+
+        except Exception as e:
+            print(f"Failed download {ticker} attempt {attempt+1} | {e}")
+            if attempt == 0:
+                continue  # retry sekali lagi
             return None
 
-        # Rapikan index & timezone
-        df = df.copy()
-        df.index = pd.to_datetime(df.index)
-        if df.index.tz is None:
-            df.index = df.index.tz_localize("UTC").tz_convert("Asia/Jakarta")
-        else:
-            df.index = df.index.tz_convert("Asia/Jakarta")
-
-        # Normalisasi kolom
-        df = normalize_yf_df(df)
-
-        # Fallback: kalau tidak ada 'Close', pakai 'Adj Close'
-        if "Close" not in df.columns and "Adj Close" in df.columns:
-            df["Close"] = df["Adj Close"]
-
-        # Simpan cache baru
-        save_cache(ticker, interval, df)
-        return df
-
-    except Exception as e:
-        print(f"Failed download {ticker} | {e}")
-        return None
+    return None
 
 
 
@@ -515,11 +542,15 @@ def process_stock(kode):
     ticker = f"{kode}.JK"
 
     try:
-        d1 = fetch_data(ticker, "1d", "12mo")
-        h4 = fetch_data(ticker, "4h", "12mo")
+        d1 = fetch_data(ticker, "1d", "12mo",force_refresh=True)
+        h4 = fetch_data(ticker, "4h", "6mo",force_refresh=True)
 
-        if d1 is None or h4 is None:
+        if d1 is None:
             return None
+
+        if h4 is None:
+            print(f"{kode}: data 4h tidak tersedia, fallback ke daily")
+            h4 = d1.copy()  # atau skip analisis minor phase
 
         d1 = add_indicators(d1)
         h4 = add_indicators(h4)
