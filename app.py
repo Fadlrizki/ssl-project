@@ -244,10 +244,6 @@ if event.selection.rows:
     row = df.iloc[event.selection.rows[0]]
     kode = row["Kode"]
 
-if st.button("🗑️ Clear Cache"):
-    clear_cache()
-    st.success("Cache dihapus, silakan run ulang")
-
     dfc = fetch_data(f"{kode}.JK", "1d", "12mo")
     if dfc is None or dfc.empty:
         st.caption(f"📅 Data terakhir: {dfc.index[-1].date()} | 💰 Close: {dfc['Close'].iloc[-1]}")
