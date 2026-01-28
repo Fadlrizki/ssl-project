@@ -32,13 +32,13 @@ REQUIRED_COLS = {
 st.set_page_config(layout="wide")
 st.title("📊 IDX Price Action Screener V2")
 st.caption("Daily trend • Minor phase • Volume behavior")
-dfc = fetch_data("CTTH.JK", "1d", "12mo", force_refresh=True)
-dfc2 = fetch_data("CTTH.JK", "4h", "6mo", force_refresh=True)
-st.write("CTTH(DEBUG)")
-st.write(dfc.tail(1).sort_index(ascending=False))
-st.write("LAST DATE:", dfc.index[-1])
-st.write(dfc2.tail(1).sort_index(ascending=False))
-st.write("LAST DATE:", dfc2.index[-1])
+# dfc = fetch_data("CTTH.JK", "1d", "12mo", force_refresh=True)
+# dfc2 = fetch_data("CTTH.JK", "4h", "6mo", force_refresh=True)
+# st.write("CTTH(DEBUG)")
+# st.write(dfc.tail(1).sort_index(ascending=False))
+# st.write("LAST DATE:", dfc.index[-1])
+# st.write(dfc2.tail(1).sort_index(ascending=False))
+# st.write("LAST DATE:", dfc2.index[-1])
 
 
 # ======================================================
