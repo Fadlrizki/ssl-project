@@ -35,8 +35,8 @@ st.set_page_config(layout="wide")
 st.title("📊 IDX Price Action Screener V2")
 st.caption("Daily trend • Minor phase • Volume behavior")
 # dfc = fetch_data("AISA.JK", "1d", "5d")
-st.write(dfc.tail())
-st.write("LAST DATE:", dfc.index[-1])
+# st.write(dfc.tail())
+# st.write("LAST DATE:", dfc.index[-1])
 
 
 # ======================================================
