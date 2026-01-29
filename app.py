@@ -5,7 +5,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import os
 import pickle
 from engine import build_probability_table_from_ticker,backtest
-from engine_v2 import process_stock, fetch_data, add_indicators, fetch_intraday_safe
+from engine_v2 import process_stock, fetch_data, add_indicators
 
 # ======================================================
 # CONFIG
