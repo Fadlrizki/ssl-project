@@ -109,7 +109,7 @@ def is_cache_fresh(df, interval="1d"):
 # ======================================================
 # FETCH DATA
 # ======================================================
-def fetch_data(ticker, interval="1d", period="12mo", force_refresh=True):
+def fetch_data(ticker, interval, period, force_refresh=True):
     if not force_refresh:
         cached = load_cache(ticker, interval, period)
         if cached is not None and is_cache_fresh(cached):
@@ -148,7 +148,89 @@ def fetch_data(ticker, interval="1d", period="12mo", force_refresh=True):
 
     return None
 
+# ======================================================
+# FETCH INTRADAY DATA
+# ======================================================
+def fetch_intraday_safe(
+    ticker,
+    interval="1h",
+    period="6mo",
+    min_candles=120,   # cukup untuk EMA, slope, RSI, STOCH
+    allow_4h_fallback=True
+):
+    """
+    Fetch data intraday (1H / 4H) dengan aman.
+    Prinsip:
+    - TIDAK normalize
+    - TIDAK tz_localize
+    - TIDAK reindex
+    - Terima struktur asli Yahoo
+    """
 
+    try:
+        df = yf.download(
+            ticker,
+            interval=interval,
+            period=period,
+            progress=False,
+            threads=False,
+            auto_adjust=False
+        )
+
+        # =============================
+        # GUARD 1: kosong
+        # =============================
+        if df is None or df.empty:
+            print(f"[INTRADAY EMPTY] {ticker}")
+            return None
+
+        # =============================
+        # GUARD 2: flatten multiindex
+        # =============================
+        if isinstance(df.columns, pd.MultiIndex):
+            df.columns = df.columns.get_level_values(0)
+
+        # =============================
+        # GUARD 3: kolom wajib
+        # =============================
+        required = ["Open", "High", "Low", "Close", "Volume"]
+        if not all(c in df.columns for c in required):
+            print(f"[INTRADAY INVALID COLS] {ticker}")
+            return None
+
+        # =============================
+        # CLEAN RINGAN
+        # =============================
+        df = df[required].copy()
+        df.dropna(inplace=True)
+
+        # =============================
+        # GUARD 4: candle cukup
+        # =============================
+        if len(df) < min_candles:
+            print(f"[INTRADAY TOO SHORT] {ticker} | {len(df)} bars")
+            return None
+
+        # =============================
+        # GUARD 5: suspend intraday
+        # =============================
+        if df["Volume"].iloc[-10:].sum() == 0:
+            print(f"[INTRADAY SUSPENDED] {ticker}")
+            return None
+
+        # =============================
+        # OPTIONAL: fallback synthetic 4H
+        # =============================
+        if interval == "1h" and allow_4h_fallback:
+            # pastikan bar align (4 jam)
+            if len(df) >= min_candles * 4:
+                pass  # biarkan caller yang aggregate jika mau
+
+        return df
+
+    except Exception as e:
+        print(f"[INTRADAY FAIL] {ticker} | {e}")
+        return None
 
 # ======================================================
 # INDICATORS
@@ -517,7 +599,7 @@ def process_stock(kode):
         # FETCH DATA
         # =========================
         d1 = fetch_data(ticker, "1d", "12mo", force_refresh=True)
-        h4 = fetch_data(ticker, "4h", "6mo", force_refresh=True)
+        h4 = fetch_intraday_safe(ticker, interval="1h", period="6mo")
 
         if d1 is None or d1.empty:
             return None
@@ -545,9 +627,10 @@ def process_stock(kode):
                 setup = "WAIT"
                 stage2 = False
         else:
-            minor, why, confidence, confidence_pct = "NEUTRAL", ["4H unavailable"], 0, 0
-            setup = "WAIT"
-            stage2 = False
+            minor, why, confidence, confidence_pct = minor_phase_4h(d1)
+            why = ["Fallback to Daily"] + why
+            setup = setup_state(minor)
+            stage2 = stage2_trigger(d1, setup)
 
         # =========================
         # PRICE & METRICS (DAILY ONLY)

@@ -7,8 +7,71 @@ BACKTEST & PROBABILITY ENGINE
 import pandas as pd
 import numpy as np
 
-from engine_v2 import fetch_data, add_indicators, extract_market_state,latest_candle_info
+from engine_v2 import add_indicators, extract_market_state,latest_candle_info
 import os, pickle
+import yfinance as yf
+
+def fetch_daily_backtest(
+    ticker,
+    period="5y",
+    min_candles=150
+):
+    """
+    Fetch DAILY data khusus untuk backtest & probability engine.
+    Prinsip:
+    - NO cache
+    - NO tz_localize
+    - NO normalize
+    - PURE Yahoo output
+    """
+
+    try:
+        df = yf.download(
+            ticker,
+            interval="1d",
+            period=period,
+            progress=False,
+            threads=False,
+            auto_adjust=False
+        )
+
+        # =============================
+        # GUARD 1: kosong
+        # =============================
+        if df is None or df.empty:
+            return None
+
+        # =============================
+        # GUARD 2: flatten kolom
+        # =============================
+        if isinstance(df.columns, pd.MultiIndex):
+            df.columns = df.columns.get_level_values(0)
+
+        required = ["Open", "High", "Low", "Close", "Volume"]
+        if not all(c in df.columns for c in required):
+            return None
+
+        df = df[required].copy()
+        df.dropna(inplace=True)
+
+        # =============================
+        # GUARD 3: candle cukup
+        # =============================
+        if len(df) < min_candles:
+            return None
+
+        # =============================
+        # GUARD 4: suspend
+        # =============================
+        if df["Volume"].iloc[-10:].sum() == 0:
+            return None
+
+        return df
+
+    except Exception as e:
+        print(f"[BACKTEST FETCH FAIL] {ticker} | {e}")
+        return None
+
 
 # ======================================================
 # HELPERS
@@ -137,7 +200,7 @@ def backtest_summary(df: pd.DataFrame):
     }
 
 def backtest_strategy(ticker: str):
-    df = fetch_data(ticker)
+    df = fetch_daily_backtest(ticker)
     if df is None or len(df) < 100:
         return None
 
@@ -169,7 +232,7 @@ def rsi_bucket(rsi: float) -> str:
 
 
 def backtest_decision(ticker: str, lookback: int = 180):
-    df = fetch_data(ticker)
+    df = fetch_daily_backtest(ticker)
     if df is None or len(df) < lookback + 20:
         return None
 
@@ -416,7 +479,7 @@ def build_probability_table_from_ticker(ticker: str, lookback: int = 180):
     if ticker in prob_cache:
         return prob_cache[ticker]
 
-    df = fetch_data(ticker)
+    df = fetch_daily_backtest(ticker)
     if df is None or len(df) < lookback + 2:
         return None
 
@@ -444,5 +507,3 @@ def build_probability_table_from_ticker(ticker: str, lookback: int = 180):
     save_prob_cache(prob_cache)
 
     return df_prob
-
-

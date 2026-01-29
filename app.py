@@ -5,7 +5,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import os
 import pickle
 from engine import build_probability_table_from_ticker,backtest
-from engine_v2 import process_stock, fetch_data, add_indicators
+from engine_v2 import process_stock, fetch_data, add_indicators, fetch_intraday_safe
 
 # ======================================================
 # CONFIG
@@ -32,9 +32,10 @@ REQUIRED_COLS = {
 st.set_page_config(layout="wide")
 st.title("📊 IDX Price Action Screener V2")
 st.caption("Daily trend • Minor phase • Volume behavior")
-# dfc = fetch_data("GUNA.JK", "1d", "12mo", force_refresh=True)
-# dfc2 = fetch_data("GUNA.JK", "4h", "1mo", force_refresh=True)
-# st.write("CTTH(DEBUG)")
+# dfc = fetch_data("UFOE.JK", "1d", "12mo", force_refresh=True)
+# dfc2 = fetch_intraday_safe("UFOE.JK", "1h", "6mo")
+# # dfc2 = fetch_intraday_safe("UFOE.JK")
+# st.write("UFOE(DEBUG)")
 # st.write(dfc.tail(1).sort_index(ascending=False))
 # st.write("LAST DATE:", dfc.index[-1])
 # st.write(dfc2.tail(1).sort_index(ascending=False))
