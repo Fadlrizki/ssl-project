@@ -1,6 +1,8 @@
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import os
 import pickle
@@ -15,11 +17,13 @@ CACHE_VERSION = "v3"
 CACHE_SCREENING = f"screening_cache_{CACHE_VERSION}.pkl"
 TRIGGER_CACHE = f"trigger_cache_{CACHE_VERSION}.pkl"
 PROB_CACHE = f"prob_cache_{CACHE_VERSION}.pkl"   
+BACKTEST_CACHE = f"backtest_cache_{CACHE_VERSION}.pkl"   
 
+TODAY = pd.Timestamp.today().strftime("%Y-%m-%d")
 
 EXCEL_FILE = "daftar_saham.xlsx"
 KODE_COLUMN = "Kode"
-MAX_WORKERS = 8
+MAX_WORKERS = 4
 
 REQUIRED_COLS = {
     "Kode", "MajorTrend", "MinorPhase", "SetupState",
@@ -103,6 +107,145 @@ def run_trigger_screening(codes, use_cache=True):
     save_trigger_cache(df_hijau)
     return df_hijau
 
+def load_backtest_cache():
+    if os.path.exists(BACKTEST_CACHE):
+        try:
+            return pickle.load(open(BACKTEST_CACHE, "rb"))
+        except Exception:
+            return {}
+    return {}
+
+def save_backtest_cache(cache):
+    with open(BACKTEST_CACHE, "wb") as f:
+        pickle.dump(cache, f)
+
+def run_backtest_cached(kode):
+    today = pd.Timestamp.today().strftime("%Y-%m-%d")
+    key = f"{kode}_{today}"
+
+    cache = load_backtest_cache()
+
+    if key in cache:
+        return cache[key]
+
+    result = backtest(f"{kode}.JK", mode="decision")
+
+    cache[key] = result
+    save_backtest_cache(cache)
+
+    return result
+
+def render_technical_chart(df, kode):
+    """
+    Panel 1 : Candlestick + EMA
+    Panel 2 : RSI
+    Panel 3 : Volume + Volume MA20
+    """
+
+    fig = make_subplots(
+        rows=3,
+        cols=1,
+        shared_xaxes=True,
+        vertical_spacing=0.02,
+        row_heights=[0.55, 0.2, 0.25],
+        subplot_titles=(
+            f"{kode} - Price",
+            "RSI (14)",
+            "Volume"
+        )
+    )
+
+    # =========================
+    # PRICE - CANDLESTICK
+    # =========================
+    fig.add_trace(
+        go.Candlestick(
+            x=df.index,
+            open=df["Open"],
+            high=df["High"],
+            low=df["Low"],
+            close=df["Close"],
+            name="Price"
+        ),
+        row=1, col=1
+    )
+
+    # EMA
+    for ema in ["EMA13", "EMA21", "EMA50"]:
+        if ema in df.columns:
+            fig.add_trace(
+                go.Scatter(
+                    x=df.index,
+                    y=df[ema],
+                    mode="lines",
+                    name=ema
+                ),
+                row=1, col=1
+            )
+
+    # =========================
+    # RSI
+    # =========================
+    if "RSI" in df.columns:
+        fig.add_trace(
+            go.Scatter(
+                x=df.index,
+                y=df["RSI"],
+                mode="lines",
+                name="RSI",
+                line=dict(width=1.5)
+            ),
+            row=2, col=1
+        )
+
+        # RSI level
+        fig.add_hline(y=70, line_dash="dash", row=2, col=1)
+        fig.add_hline(y=30, line_dash="dash", row=2, col=1)
+
+    # =========================
+    # VOLUME
+    # =========================
+    fig.add_trace(
+        go.Bar(
+            x=df.index,
+            y=df["Volume"],
+            name="Volume"
+        ),
+        row=3, col=1
+    )
+
+    # Volume MA20
+    if "VOL_MA20" in df.columns:
+        fig.add_trace(
+            go.Scatter(
+                x=df.index,
+                y=df["VOL_MA20"],
+                mode="lines",
+                name="Vol MA20"
+            ),
+            row=3, col=1
+        )
+
+    # =========================
+    # LAYOUT
+    # =========================
+    fig.update_layout(
+        height=800,
+        showlegend=True,
+        xaxis_rangeslider_visible=False,
+        margin=dict(t=40, b=40)
+    )
+
+    st.plotly_chart(fig, use_container_width=True)
+
+def retry_single_stock(kode):
+    if os.path.exists(CACHE_SCREENING):
+        df = load_cache_safe(CACHE_SCREENING)
+        df = df[df["Kode"] != kode]
+        save_cache(df, CACHE_SCREENING)
+
+    return process_stock(kode)
+
 # ======================================================
 # LOAD SAHAM
 # ======================================================
@@ -126,11 +269,11 @@ def save_trigger_cache(df):
 # ======================================================
 # RUN SCREENING
 # ======================================================
-if st.button("🗑️ Clear All Cache"):
+if st.button("🗑️ Clear All Cache", key="btn_clear_cache"):
     clear_cache()
     st.success("Cache berhasil dihapus. Silakan jalankan screening ulang.")
 
-if st.button("🚀 Run Screening"):
+if st.button("🚀 Run Screening", key="btn_run_screening"):
     results = []
     progress = st.progress(0)
     status = st.empty()
@@ -240,6 +383,32 @@ event = st.dataframe(
     selection_mode="single-row",
     on_select="rerun"
 )
+# if st.button("🔁 Retry Semua Price Kosong", key="btn_retry_all_empty_price"):
+#     kosong = df[df["Price"].isna()]["Kode"].tolist()
+
+#     if not kosong:
+#         st.info("Tidak ada emiten dengan Price kosong")
+#     else:
+#         with st.spinner(f"Retry {len(kosong)} emiten..."):
+#             results = []
+#             for k in kosong:
+#                 r = retry_single_stock(k)
+#                 if r:
+#                     results.append(r)
+
+#         if results:
+#             df_new = pd.DataFrame(results)
+#             df = pd.concat(
+#                 [df[~df["Kode"].isin(df_new["Kode"])], df_new],
+#                 ignore_index=True
+#             )
+#             save_cache(df, CACHE_SCREENING)
+#             st.session_state["scan"] = df
+#             st.success(f"Retry {len(results)} emiten berhasil")
+#             st.rerun()
+#         else:
+#             st.warning("Retry gagal — semua masih kosong")
+
 
 # ======================================================
 # DETAIL VIEW
@@ -248,34 +417,65 @@ if event.selection.rows:
     row = df.iloc[event.selection.rows[0]]
     kode = row["Kode"]
 
-    dfc = fetch_data(f"{kode}.JK", "1d", "12mo")
-    if dfc is None or dfc.empty:
-        st.caption(f"📅 Data terakhir: {dfc.index[-1].date()} | 💰 Close: {dfc['Close'].iloc[-1]}")
-        st.warning("Data chart tidak tersedia")
-        st.stop()
+    # =========================
+    # RETRY BUTTON
+    # =========================
+    col_retry1, col_retry2 = st.columns([1, 3])
 
-    dfc = add_indicators(dfc)
+    with col_retry1:
+        if st.button(f"🔁 Retry Fetch {kode}", key=f"btn_retry_single_{kode}"):
+            with st.spinner(f"Retry {kode}..."):
+                r = retry_single_stock(kode)
 
-    fig = go.Figure()
-    fig.add_candlestick(
-        x=dfc.index,
-        open=dfc.Open,
-        high=dfc.High,
-        low=dfc.Low,
-        close=dfc.Close
-    )
-    fig.add_scatter(x=dfc.index, y=dfc.EMA13, name="EMA13")
-    fig.add_scatter(x=dfc.index, y=dfc.EMA21, name="EMA21")
-    fig.add_scatter(x=dfc.index, y=dfc.EMA50, name="EMA50")
+                if r:
+                    df = pd.concat(
+                        [df[df["Kode"] != kode], pd.DataFrame([r])],
+                        ignore_index=True
+                    )
+                    save_cache(df, CACHE_SCREENING)
+                    st.session_state["scan"] = df
+                    st.success("Retry berhasil")
+                    st.rerun()
+                else:
+                    st.error("Retry gagal (data masih kosong)")
 
-    fig.update_layout(height=500, xaxis_rangeslider_visible=False)
-    st.plotly_chart(fig, width="stretch")
+    # =========================
+    # CHART
+    # =========================
+    st.subheader(f"📈 Chart {kode}")
+
+    ticker = f"{kode}.JK"
+
+    try:
+        df_daily = fetch_data(
+            ticker,
+            interval="1d",
+            period="12mo",
+            force_refresh=False
+        )
+
+        if df_daily is None or df_daily.empty:
+            st.warning("Data chart tidak tersedia")
+        else:
+            df_daily = add_indicators(df_daily)
+            render_technical_chart(df_daily, kode)
+
+    except Exception as e:
+        st.error(f"Gagal render chart: {e}")
+
+    # =========================
+    # METRIC TABLE
+    # =========================
+    st.subheader("📊 Technical Summary")
 
     st.table(pd.DataFrame({
         "Metric": [
-            "Minor Phase", "Confidence",
-            "RSI", "Stoch %K",
-            "Volume Behavior", "Volume Ratio",
+            "Minor Phase",
+            "Confidence",
+            "RSI",
+            "Stoch %K",
+            "Volume Behavior",
+            "Volume Ratio",
             "Final Decision"
         ],
         "Value": [
@@ -290,54 +490,83 @@ if event.selection.rows:
     }))
 
 
+
 # ======================================================
 # BACKTEST
 # ======================================================
 st.subheader("📊 Backtest")
 
-if event.selection.rows and st.button("Run Backtest"):
+if event.selection.rows:
     kode = df.iloc[event.selection.rows[0]]["Kode"]
-    st.session_state["backtest_result"] = backtest(f"{kode}.JK", mode="decision")
-    # st.session_state["backtest_strategy"] = backtest(f"{kode}.JK", mode="strategy")
-    st.session_state["prob_table"] = build_probability_table_from_ticker(f"{kode}.JK")
+
+    if st.button(
+        "Run Backtest",
+        key=f"run_backtest_{kode}"
+    ):
+        with st.spinner(f"Running backtest {kode}..."):
+            st.session_state["backtest_result"] = backtest(
+                f"{kode}.JK",
+                mode="decision"
+            )
+            st.session_state["prob_table"] = build_probability_table_from_ticker(
+                f"{kode}.JK"
+            )
+
+else:
+    st.info("Pilih 1 emiten untuk menjalankan backtest")
 
 # tampilkan hasil backtest jika ada
 if "backtest_result" in st.session_state:
     result = st.session_state["backtest_result"]
+
     st.subheader("🔮 Prediksi Market Besok")
-    if result:
+
+    if not result:
+        st.warning("⚠️ Tidak ada hasil backtest")
+    else:
         bias = result.get("Bias")
+
         if bias in ["HIJAU", "MERAH"]:
             col1, col2, col3 = st.columns(3)
             col1.metric("Bias", bias)
             col2.metric("Prob Hijau", f"{result.get('ProbHijau', 0)}%")
             col3.metric("Prob Merah", f"{result.get('ProbMerah', 0)}%")
+
             st.caption(
                 f"Sample historis: {result.get('Sample', '-')}"
                 f" | Confidence: {result.get('Confidence', '-')}"
             )
+
         elif bias == "NO_MATCH":
             st.warning("⚠️ Tidak ditemukan kondisi historis relevan")
+
         elif bias == "NO_MODEL":
             st.warning("⚠️ Model probabilitas belum terbentuk")
+
         elif bias == "NO_SETUP":
             st.info("ℹ️ Tidak ada setup valid")
+
         else:
             st.json(result)
 
+
     if result and "DecisionContext" in result:
-        st.subheader("🧠 Konteks Market")
         ctx = result["DecisionContext"]
+
+        st.subheader("🧠 Konteks Market")
+
         ctx_df = pd.DataFrame(
-            {"Value": [
-                ctx.get("MajorTrend"),
-                ctx.get("MinorPhase"),
-                ctx.get("RSI_BUCKET"),
-                ctx.get("VOL_BEHAVIOR"),
-                ctx.get("latest_candle"),
-                ctx.get("AvgVolRatio"),
-                ctx.get("MatchType"),
-            ]},
+            {
+                "Value": [
+                    ctx.get("MajorTrend", "-"),
+                    ctx.get("MinorPhase", "-"),
+                    ctx.get("RSI_BUCKET", "-"),
+                    ctx.get("VOL_BEHAVIOR", "-"),
+                    ctx.get("latest_candle", "-"),
+                    ctx.get("AvgVolRatio", "-"),
+                    ctx.get("MatchType", "-"),
+                ]
+            },
             index=[
                 "Major Trend",
                 "Minor Phase",
@@ -348,15 +577,20 @@ if "backtest_result" in st.session_state:
                 "Match Type",
             ]
         )
+
         st.table(ctx_df)
 
+
 if "prob_table" in st.session_state:
-    prob_table = st.session_state["prob_table"]
     st.subheader("📊 Probability Table (180 Hari)")
+
+    prob_table = st.session_state["prob_table"]
+
     if prob_table is None or prob_table.empty:
         st.warning("Tidak ada data STRONG MajorTrend dalam 180 hari")
     else:
         st.dataframe(prob_table, use_container_width=True)
+
 
 # if "backtest_strategy" in st.session_state and st.session_state["backtest_strategy"] is not None:
 #     st.subheader("📈 Strategy Backtest (Historical)")
@@ -367,14 +601,59 @@ if "prob_table" in st.session_state:
 # ======================================================
 # TRIGGER SCREENING
 # ======================================================
-if st.button("🔔 Run Trigger Screening(WARNING!!!)"):
-    df_hijau = run_trigger_screening(codes, use_cache=False)  # paksa refresh
-    st.session_state["trigger_result"] = df_hijau
+if st.button("🔔 Run Trigger Screening", key="btn_trigger_screening"):
+    df_screen = st.session_state.get("scan")
 
+    if df_screen is None or df_screen.empty:
+        st.warning("Belum ada hasil screening")
+        st.stop()
+
+    df_strong = df_screen[df_screen["MajorTrend"] == "STRONG"]
+
+    if df_strong.empty:
+        st.info("Tidak ada emiten dengan MajorTrend STRONG")
+        st.stop()
+
+    progress = st.progress(0.0)
+    status = st.empty()
+
+    hijau_results = []
+    total = len(df_strong)
+
+    for i, row in enumerate(df_strong.itertuples(), start=1):
+        kode = row.Kode
+        try:
+            result = run_backtest_cached(kode)
+
+            if result and result.get("Bias") == "HIJAU":
+                hijau_results.append({
+                    "Kode": kode,
+                    "MajorTrend": row.MajorTrend,
+                    "MinorPhase": row.MinorPhase,
+                    "ProbHijau": result.get("ProbHijau"),
+                    "ProbMerah": result.get("ProbMerah"),
+                    "Sample": result.get("Sample"),
+                    "Confidence": result.get("Confidence"),
+                    "MatchType": result.get("DecisionContext", {}).get("MatchType")
+                })
+        except Exception:
+            pass
+
+        progress.progress(i / total)
+        status.text(f"Trigger screening {i}/{total} emiten STRONG")
+
+    st.session_state["trigger_result"] = pd.DataFrame(hijau_results)
+
+
+# ======================================================
+# TRIGGER RESULT VIEW (WAJIB DI LUAR BUTTON)
+# ======================================================
 if "trigger_result" in st.session_state:
     df_hijau = st.session_state["trigger_result"]
-    st.subheader("🌱 Emiten dengan Bias HIJAU untuk Besok")
-    if not df_hijau.empty:
-        st.dataframe(df_hijau, use_container_width=True)
+
+    st.subheader("🌱 Emiten STRONG dengan Bias HIJAU")
+
+    if df_hijau.empty:
+        st.info("Tidak ada emiten STRONG dengan Bias HIJAU")
     else:
-        st.info("Tidak ada emiten dengan Bias HIJAU untuk besok.")
+        st.dataframe(df_hijau, use_container_width=True)

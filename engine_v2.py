@@ -47,9 +47,6 @@ def normalize_yf_df(df, ticker=None):
 
     df = df.loc[:, ~df.columns.duplicated()]
     return df
-
-    
-
 # ======================================================
 # CACHE HELPERS
 # ======================================================
@@ -130,7 +127,6 @@ def fetch_data(ticker, interval, period, force_refresh=True):
             df.index = df.index.tz_localize("UTC").tz_convert("Asia/Jakarta")
 
             df = normalize_yf_df(df, ticker)
-
 
             if "Close" not in df.columns and "Adj Close" in df.columns:
                 df["Close"] = df["Adj Close"]
@@ -434,6 +430,12 @@ def stage2_trigger(df, setup):
 # VOLUME BEHAVIOR (NEW - CANDLE BASED)
 # ======================================================
 def volume_behavior(df):
+    """
+    Candle-based Volume Analysis (VSA-lite)
+    Return FIXED 4 values:
+    (behavior, vol_ratio, volume, vol_ma20)
+    """
+
     last = df.iloc[-1]
 
     open_ = last["Open"]
@@ -444,9 +446,11 @@ def volume_behavior(df):
     vol_ma20 = last["VOL_MA20"] if last["VOL_MA20"] > 0 else 1
     ema21 = last["EMA21"]
 
-    # ===== GUARD =====
-    if high == low:
-        return "VOL_NEUTRAL", round(volume / vol_ma20, 2)
+    # =============================
+    # BASIC GUARD
+    # =============================
+    if high <= low or volume <= 0:
+        return "VOL_NEUTRAL", 0.0, volume, vol_ma20
 
     range_ = high - low
     body = abs(close - open_)
@@ -456,27 +460,53 @@ def volume_behavior(df):
     body_ratio = body / range_
     vol_ratio = volume / vol_ma20
 
-    # ===== LOW VOLUME =====
-    if vol_ratio < 1.2:
-        return "VOL_NEUTRAL", round(vol_ratio, 2)
+    # =============================
+    # LOW ACTIVITY
+    # =============================
+    if vol_ratio < 1.1:
+        return "VOL_NEUTRAL", round(vol_ratio, 2), volume, vol_ma20
 
-    # ===== ABSORPTION =====
-    if (
-        lower_wick >= 1.5 * body and
-        body_ratio <= 0.40 and
+    # =============================
+    # ABSORPTION
+    # Volume besar, range kecil, harga TIDAK jatuh
+    # =============================
+    absorption = (
+        vol_ratio >= 1.3 and
+        body_ratio <= 0.35 and
+        lower_wick >= body * 1.2 and
         close >= ema21
-    ):
-        return "VOL_ABSORPTION", round(vol_ratio, 2)
+    )
 
-    # ===== DISTRIBUTION =====
-    if (
-        upper_wick >= 1.5 * body and
-        body_ratio <= 0.40 and
+    if absorption:
+        return "VOL_ABSORPTION", round(vol_ratio, 2), volume, vol_ma20
+
+    # =============================
+    # DISTRIBUTION
+    # Volume besar, rejection atas, close lemah
+    # =============================
+    distribution = (
+        vol_ratio >= 1.3 and
+        body_ratio <= 0.35 and
+        upper_wick >= body * 1.2 and
         close < ema21
-    ):
-        return "VOL_DISTRIBUTION", round(vol_ratio, 2)
+    )
 
-    return "VOL_EXPANSION_NEUTRAL", round(vol_ratio, 2)
+    if distribution:
+        return "VOL_DISTRIBUTION", round(vol_ratio, 2), volume, vol_ma20
+
+    # =============================
+    # EXPANSION (Effort with Result)
+    # =============================
+    expansion = (
+        vol_ratio >= 1.5 and
+        body_ratio >= 0.55
+    )
+
+    if expansion:
+        return "VOL_EXPANSION", round(vol_ratio, 2), volume, vol_ma20
+
+    return "VOL_NEUTRAL", round(vol_ratio, 2), volume, vol_ma20
+
 
 
 # =========================
@@ -578,15 +608,14 @@ def final_decision(major, minor, setup, stage2, vol_behavior):
         major == "STRONG"
         and setup == "STAGE2_READY"
         and stage2
-        and vol_behavior in ("ABSORPTION", "NORMAL")
+        and vol_behavior in ("VOL_ABSORPTION", "VOL_NEUTRAL", "VOL_EXPANSION")
     ):
         return "ENTRY_READY"
 
-    if vol_behavior.startswith("DISTRIBUTION"):
+    if vol_behavior == "VOL_DISTRIBUTION":
         return "WAIT"
 
     return "WAIT"
-
 
 # ======================================================
 # PROCESS STOCK
@@ -596,16 +625,23 @@ def process_stock(kode):
 
     try:
         # =========================
-        # FETCH DATA
+        # FETCH DAILY
         # =========================
         d1 = fetch_data(ticker, "1d", "12mo", force_refresh=True)
-        h4 = fetch_intraday_safe(ticker, interval="1h", period="6mo")
-
         if d1 is None or d1.empty:
             return None
 
         # =========================
-        # DAILY PROCESS
+        # HARD GUARD — SUSPEND / INVALID
+        # =========================
+        if "Volume" not in d1.columns:
+            return None
+
+        if d1["Volume"].iloc[-1] <= 0:
+            return None
+
+        # =========================
+        # ADD INDICATORS (DAILY)
         # =========================
         d1 = add_indicators(d1.copy(deep=True))
         if d1 is None or d1.empty:
@@ -614,32 +650,36 @@ def process_stock(kode):
         major = major_trend_daily(d1)
 
         # =========================
-        # 4H PROCESS (GUARDED)
+        # FETCH INTRADAY (SAFE)
         # =========================
+        h4 = fetch_intraday_safe(ticker, "1h", "6mo")
+        intraday_used = False
+
         if h4 is not None and not h4.empty:
             h4 = add_indicators(h4.copy(deep=True))
             if h4 is not None and not h4.empty:
                 minor, why, confidence, confidence_pct = minor_phase_4h(h4)
                 setup = setup_state(minor)
                 stage2 = stage2_trigger(h4, setup)
-            else:
-                minor, why, confidence, confidence_pct = "NEUTRAL", ["4H invalid"], 0, 0
-                setup = "WAIT"
-                stage2 = False
-        else:
+                intraday_used = True
+
+        # =========================
+        # FALLBACK → DAILY
+        # =========================
+        if not intraday_used:
             minor, why, confidence, confidence_pct = minor_phase_4h(d1)
             why = ["Fallback to Daily"] + why
             setup = setup_state(minor)
             stage2 = stage2_trigger(d1, setup)
 
         # =========================
-        # PRICE & METRICS (DAILY ONLY)
+        # PRICE & METRICS (DAILY)
         # =========================
         price_today = float(d1["Close"].iloc[-1])
         price_yesterday = float(d1["Close"].iloc[-2])
         price_change = round((price_today / price_yesterday - 1) * 100, 2)
 
-        vol_behavior, vol_ratio = volume_behavior(d1)
+        vol_behavior, vol_ratio, volume, vol_ma20 = volume_behavior(d1)
 
         gap_ema13 = round((price_today / d1["EMA13"].iloc[-1] - 1) * 100, 2)
         gap_ema21 = round((price_today / d1["EMA21"].iloc[-1] - 1) * 100, 2)
@@ -650,20 +690,21 @@ def process_stock(kode):
         sma50 = float(d1["SMA50"].iloc[-1])
         dist_to_sma50 = compute_dist_sma50(d1)
 
-        candle_label, candle_red_breakdown, candle_green_approach = latest_candle_info(d1)
-        candle_effect = 1 if candle_green_approach else -1 if candle_red_breakdown else 0
+        candle_label, candle_red, candle_green = latest_candle_info(d1)
+        candle_effect = 1 if candle_green else -1 if candle_red else 0
 
         # =========================
         # CONFIDENCE BOOST
         # =========================
-        if minor == "TREND_CONTINUE" and vol_behavior == "VOL_ABSORPTION":
+        if minor == "TREND_CONTINUE" and vol_behavior in ["VOL_ABSORPTION", "VOL_EXPANSION"]:
             confidence += 1
-            why.append("Volume absorption mendukung kelanjutan trend")
-            confidence_pct = round(confidence / 7 * 100)
+            why.append("Volume mendukung kelanjutan trend")
 
         if minor == "TREND_CONTINUE" and candle_label == "Hijau Kuat (Impulse)":
             confidence += 1
-            why.append("Impulse candle mendukung kelanjutan trend")
+            why.append("Impulse candle")
+
+        confidence_pct = round(confidence / 7 * 100)
 
         # =========================
         # FINAL DECISION
@@ -671,27 +712,16 @@ def process_stock(kode):
         final_dec = final_decision(major, minor, setup, stage2, vol_behavior)
 
         # =========================
-        # HARD GUARD (ANTI DATA LEAK)
+        # HARD PRICE GUARD
         # =========================
         if price_today <= 0 or price_today > 1_000_000:
-            print(f"INVALID PRICE {kode} {price_today}")
             return None
 
-        # DEBUG TRACE (boleh dihapus nanti)
-        print(
-            kode,
-            ticker,
-            d1.index[-1],
-            price_today
-        )
-
         # =========================
-        # RETURN RESULT
+        # RETURN — CONSISTENT SCHEMA
         # =========================
         return {
             "Kode": kode,
-            # "Ticker": ticker,
-            # "ProcessTime": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "Price": price_today,
             "PriceChange%": price_change,
             "Gap_EMA13%": gap_ema13,
@@ -704,6 +734,8 @@ def process_stock(kode):
             "MinorConfidence%": confidence_pct,
             "SetupState": setup,
             "Stage2Valid": stage2,
+            "Volume": volume,
+            "Vol_20MA": vol_ma20,
             "VOL_BEHAVIOR": vol_behavior,
             "VOL_RATIO": vol_ratio,
             "RSI": round(rsi, 2),
@@ -716,8 +748,9 @@ def process_stock(kode):
         }
 
     except Exception as e:
-        print(f"Failed process_stock: {kode} | {e}")
+        print(f"[ERROR] {kode} | {e}")
         return None
+
 
 
 # ======================================================
