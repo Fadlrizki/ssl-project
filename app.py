@@ -447,33 +447,6 @@ event = st.dataframe(
     selection_mode="single-row",
     on_select="rerun"
 )
-# if st.button("🔁 Retry Semua Price Kosong", key="btn_retry_all_empty_price"):
-#     kosong = df[df["Price"].isna()]["Kode"].tolist()
-
-#     if not kosong:
-#         st.info("Tidak ada emiten dengan Price kosong")
-#     else:
-#         with st.spinner(f"Retry {len(kosong)} emiten..."):
-#             results = []
-#             for k in kosong:
-#                 r = retry_single_stock(k)
-#                 if r:
-#                     results.append(r)
-
-#         if results:
-#             df_new = pd.DataFrame(results)
-#             df = pd.concat(
-#                 [df[~df["Kode"].isin(df_new["Kode"])], df_new],
-#                 ignore_index=True
-#             )
-#             save_cache(df, CACHE_SCREENING)
-#             st.session_state["scan"] = df
-#             st.success(f"Retry {len(results)} emiten berhasil")
-#             st.rerun()
-#         else:
-#             st.warning("Retry gagal — semua masih kosong")
-
-
 # ======================================================
 # DETAIL VIEW
 # ======================================================
@@ -738,6 +711,61 @@ df_final = df_trigger.merge(
     how="left"
 )
 
-st.subheader("📊 Trigger + Broker Summary")
-st.dataframe(df_final, use_container_width=True)
+# st.subheader("📊 Trigger + Broker Summary")
+# st.dataframe(df_final, use_container_width=True)
 
+
+st.subheader("📊 Trigger + Broker Summary")
+
+event_trigger = st.dataframe(
+    df_final,
+    use_container_width=True,
+    selection_mode="single-row",
+    on_select="rerun"
+)
+
+# kalau ada baris dipilih
+if event_trigger.selection.rows:
+    row = df_final.iloc[event_trigger.selection.rows[0]]
+    kode = row["Kode"]
+
+    st.subheader(f"📈 Chart {kode}")
+
+    ticker = f"{kode}.JK"
+    try:
+        df_daily = fetch_data(
+            ticker,
+            interval="1d",
+            period="12mo",
+            force_refresh=False
+        )
+        if df_daily is None or df_daily.empty:
+            st.warning("Data chart tidak tersedia")
+        else:
+            df_daily = add_indicators(df_daily)
+            render_technical_chart(df_daily, kode)
+    except Exception as e:
+        st.error(f"Gagal render chart: {e}")
+
+    # detail summary table
+    st.subheader("📊 Technical Summary")
+    st.table(pd.DataFrame({
+        "Metric": [
+            "Major Trend",
+            "Minor Phase",
+            "Prob Hijau",
+            "Prob Merah",
+            "Sample",
+            "Confidence",
+            "MatchType"
+        ],
+        "Value": [
+            row["MajorTrend"],
+            row["MinorPhase"],
+            row["ProbHijau"],
+            row["ProbMerah"],
+            row["Sample"],
+            row["Confidence"],
+            row["MatchType"]
+        ]
+    }))
