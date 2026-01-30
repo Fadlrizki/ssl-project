@@ -278,25 +278,41 @@ def save_trigger_cache(df, trade_date=None):
     path = f"cache/trigger_result_{trade_date}.pkl"
     with open(path, "wb") as f:
         pickle.dump(df, f)
-    print(f"✅ Cache saved → {path}")
+    st.info(f"✅ Cache saved → {path}")
 
 
-def load_broker_summary(trade_date):
-    path = f"broksum/broker_summary_{trade_date}.csv"
-    if not os.path.exists(path):
-        return None
-    return pd.read_csv(path)
+def load_broker_summary(trade_date, max_back=7):
+    dt = datetime.strptime(trade_date, "%Y-%m-%d")
+    for i in range(max_back + 1):
+        check_date = (dt - timedelta(days=i)).strftime("%Y-%m-%d")
+        path = f"broksum/broker_summary-{check_date}.csv"
+        if os.path.exists(path):
+            df = pd.read_csv(path)
+            return df, check_date
+    return None, None
 
-def load_trigger_cache_pickle(trade_date):
-    path, used_date = find_latest_cache(trade_date)
-    if path is None:
-        print("❌ Data belum ada untuk tanggal ini maupun sebelumnya")
-        return None
-    print(f"ℹ️ Data untuk {trade_date} belum ada, pakai cache {used_date}")
-    try:
-        return pickle.load(open(path, "rb"))
-    except Exception:
-        return None
+def load_trigger_cache_pickle(trade_date, max_back=7):
+    dt = datetime.strptime(trade_date, "%Y-%m-%d")
+    for i in range(max_back + 1):
+        check_date = (dt - timedelta(days=i)).strftime("%Y-%m-%d")
+        path = f"cache/trigger_result_{check_date}.pkl"
+        if os.path.exists(path):
+            df = pickle.load(open(path, "rb"))
+            return df, check_date
+    return None, None
+
+def show_status(name, trade_date, used_date, df):
+    """
+    Tampilkan status data berdasarkan tanggal yang dipakai.
+    """
+    if df is None or (isinstance(df, pd.DataFrame) and df.empty):
+        st.info(f"❌ {name} tidak tersedia untuk hari ini maupun fallback")
+        st.stop()
+    elif used_date != trade_date:
+        st.info(f"ℹ️ {name} {trade_date} belum tersedia, pakai data {used_date}")
+    else:
+        st.success(f"✅ {name} {trade_date} sudah update")
+
 
 # ======================================================
 # LOAD SAHAM
@@ -703,24 +719,17 @@ if st.button("🔔 Run Trigger Screening", key="btn_trigger_screening"):
 # ======================================================
 TRADE_DATE = TODAY
 
-df_trigger = load_trigger_cache_pickle(TRADE_DATE)
-
+df_trigger, trigger_used_date = load_trigger_cache_pickle(TRADE_DATE)
 st.subheader("🌱 Emiten STRONG dengan Bias HIJAU")
-
-if df_trigger is None or df_trigger.empty:
-    st.info("Trigger screening hari ini belum tersedia")
-    st.stop()
+show_status("Trigger screening", TRADE_DATE, trigger_used_date, df_trigger)
 
 st.dataframe(df_trigger, use_container_width=True)
 
 # ======================================================
 # BROKER SUMMARY ENRICHMENT
 # ======================================================
-df_broker = load_broker_summary(TRADE_DATE)
-
-if df_broker is None:
-    st.info("ℹ️ Broker summary hari ini belum tersedia")
-    st.stop()
+df_broker, broker_used_date = load_broker_summary(TRADE_DATE)
+show_status("Broker summary", TRADE_DATE, broker_used_date, df_broker)
 
 df_final = df_trigger.merge(
     df_broker,
