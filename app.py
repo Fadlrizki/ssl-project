@@ -8,6 +8,7 @@ import os
 import pickle
 from engine import build_probability_table_from_ticker,backtest
 from engine_v2 import process_stock, fetch_data, add_indicators
+from datetime import datetime, timedelta
 
 # ======================================================
 # CONFIG
@@ -77,9 +78,6 @@ def save_cache(df, path):
     with open(path, "wb") as f:
         pickle.dump(df, f)
 
-def save_trigger_cache(df):
-    with open(TRIGGER_CACHE, "wb") as f:
-        pickle.dump(df, f)
 
 def run_trigger_screening(codes, use_cache=True):
     if use_cache:
@@ -154,6 +152,7 @@ def render_technical_chart(df, kode):
             "Volume"
         )
     )
+
 
     # =========================
     # PRICE - CANDLESTICK
@@ -247,6 +246,59 @@ def retry_single_stock(kode):
     return process_stock(kode)
 
 # ======================================================
+# HELPER BROKSUM
+# ======================================================
+
+def find_latest_cache(trade_date, max_back=7):
+    """
+    Cari file cache mundur dari trade_date sampai max_back hari.
+    """
+    dt = datetime.strptime(trade_date, "%Y-%m-%d")
+    for i in range(max_back+1):
+        check_date = (dt - timedelta(days=i)).strftime("%Y-%m-%d")
+        path = f"cache/trigger_result_{check_date}.pkl"
+        if os.path.exists(path):
+            return path, check_date
+    return None, None
+
+
+def get_trade_date(today=None):
+    if today is None:
+        today = datetime.today()
+    # mundur ke hari kerja terakhir kalau weekend
+    while today.weekday() >= 5:  # 5 = Sabtu, 6 = Minggu
+        today -= timedelta(days=1)
+    return today.strftime("%Y-%m-%d")
+
+def save_trigger_cache(df, trade_date=None):
+    if trade_date is None:
+        trade_date = get_trade_date()
+    # pastikan folder cache ada
+    os.makedirs("cache", exist_ok=True)
+    path = f"cache/trigger_result_{trade_date}.pkl"
+    with open(path, "wb") as f:
+        pickle.dump(df, f)
+    print(f"✅ Cache saved → {path}")
+
+
+def load_broker_summary(trade_date):
+    path = f"broksum/broker_summary_{trade_date}.csv"
+    if not os.path.exists(path):
+        return None
+    return pd.read_csv(path)
+
+def load_trigger_cache_pickle(trade_date):
+    path, used_date = find_latest_cache(trade_date)
+    if path is None:
+        print("❌ Data belum ada untuk tanggal ini maupun sebelumnya")
+        return None
+    print(f"ℹ️ Data untuk {trade_date} belum ada, pakai cache {used_date}")
+    try:
+        return pickle.load(open(path, "rb"))
+    except Exception:
+        return None
+
+# ======================================================
 # LOAD SAHAM
 # ======================================================
 saham_df = pd.read_excel(EXCEL_FILE)
@@ -261,10 +313,6 @@ def load_trigger_cache():
         except Exception:
             return pd.DataFrame()
     return pd.DataFrame()
-
-def save_trigger_cache(df):
-    with open(TRIGGER_CACHE, "wb") as f:
-        pickle.dump(df, f)
 
 # ======================================================
 # RUN SCREENING
@@ -599,7 +647,7 @@ if "prob_table" in st.session_state:
 
 
 # ======================================================
-# TRIGGER SCREENING
+# TRIGGER SCREENING (COMPUTE & SAVE)
 # ======================================================
 if st.button("🔔 Run Trigger Screening", key="btn_trigger_screening"):
     df_screen = st.session_state.get("scan")
@@ -636,24 +684,51 @@ if st.button("🔔 Run Trigger Screening", key="btn_trigger_screening"):
                     "Confidence": result.get("Confidence"),
                     "MatchType": result.get("DecisionContext", {}).get("MatchType")
                 })
+
         except Exception:
             pass
 
         progress.progress(i / total)
         status.text(f"Trigger screening {i}/{total} emiten STRONG")
 
-    st.session_state["trigger_result"] = pd.DataFrame(hijau_results)
+    df_trigger = pd.DataFrame(hijau_results)
 
+    save_trigger_cache(df_trigger, TODAY)
+
+    st.success(f"Trigger screening selesai ({len(df_trigger)} emiten)")
+    st.rerun()
 
 # ======================================================
-# TRIGGER RESULT VIEW (WAJIB DI LUAR BUTTON)
+# TRIGGER RESULT VIEW (READ FROM CACHE)
 # ======================================================
-if "trigger_result" in st.session_state:
-    df_hijau = st.session_state["trigger_result"]
+TRADE_DATE = TODAY
 
-    st.subheader("🌱 Emiten STRONG dengan Bias HIJAU")
+df_trigger = load_trigger_cache_pickle(TRADE_DATE)
 
-    if df_hijau.empty:
-        st.info("Tidak ada emiten STRONG dengan Bias HIJAU")
-    else:
-        st.dataframe(df_hijau, use_container_width=True)
+st.subheader("🌱 Emiten STRONG dengan Bias HIJAU")
+
+if df_trigger is None or df_trigger.empty:
+    st.info("Trigger screening hari ini belum tersedia")
+    st.stop()
+
+st.dataframe(df_trigger, use_container_width=True)
+
+# ======================================================
+# BROKER SUMMARY ENRICHMENT
+# ======================================================
+df_broker = load_broker_summary(TRADE_DATE)
+
+if df_broker is None:
+    st.info("ℹ️ Broker summary hari ini belum tersedia")
+    st.stop()
+
+df_final = df_trigger.merge(
+    df_broker,
+    left_on="Kode",
+    right_on="stock",
+    how="left"
+)
+
+st.subheader("📊 Trigger + Broker Summary")
+st.dataframe(df_final, use_container_width=True)
+

@@ -1,0 +1,963 @@
+stock,top5_buyers,top5_sellers,net_volume,daily_summary
+ABMM,"• KK | 2.2k | 607.98mio | Avg: 2.713 | Bandar
+• SQ | 974 | 264.83mio | Avg: 2.719 | Bandar
+• DH | 904 | 255.83mio | Avg: 2.830 | Bandar
+• XL | 908 | 251.61mio | Avg: 2.771 | Retail
+• AK | 816 | 222.44mio | Avg: 2.726 | Bandar","• YP | 1.5k | 414.71mio | Avg: 2.741 | Mix
+• NI | 1.5k | 402.99mio | Avg: 2.646 | Bandar
+• PD | 1.4k | 371.01mio | Avg: 2.730 | Mix
+• GR | 837 | 222.89mio | Avg: 2.663 | Bandar
+• XC | 722 | 191.33mio | Avg: 2.650 | Retail",-111,"Buyer: Bandar 84%, Seller: Mix 48%"
+ACST,"• AI | 17.5k | 208.40mio | Avg: 119 | Bandar
+• II | 10.0k | 120.00mio | Avg: 120 | Mix
+• YP | 8.9k | 110.76mio | Avg: 125 | Mix
+• EP | 8.4k | 102.23mio | Avg: 121 | Mix
+• AO | 7.1k | 84.07mio | Avg: 119 | Bandar","• XL | 82.7k | 1.00bio | Avg: 121 | Retail
+• KK | 6.5k | 78.38mio | Avg: 120 | Bandar
+• NI | 4.5k | 54.26mio | Avg: 120 | Bandar
+• CP | 3.4k | 40.10mio | Avg: 119 | Mix
+• BQ | 2.9k | 35.98mio | Avg: 124 | Bandar",-48187,"Buyer: Mix 53%, Seller: Retail 83%"
+AKRA,"• YP | 15.6k | 1.85bio | Avg: 1.182 | Mix
+• SQ | 15.1k | 1.80bio | Avg: 1.194 | Bandar
+• XL | 14.3k | 1.71bio | Avg: 1.192 | Retail
+• NI | 9.8k | 1.17bio | Avg: 1.185 | Bandar
+• KK | 7.8k | 915.51mio | Avg: 1.181 | Bandar","• ZP | 44.4k | 5.31bio | Avg: 1.197 | Bandar
+• AK | 43.1k | 5.06bio | Avg: 1.175 | Bandar
+• YB | 8.2k | 943.19mio | Avg: 1.157 | Retail
+• BK | 7.6k | 908.56mio | Avg: 1.201 | Bandar
+• DP | 4.8k | 564.48mio | Avg: 1.176 | Bandar",-45375,"Buyer: Bandar 52%, Seller: Bandar 92%"
+ANTM,"• KZ | 253.5k | 107.50bio | Avg: 4.240 | Mix
+• XL | 170.5k | 71.04bio | Avg: 4.167 | Retail
+• AZ | 113.4k | 47.53bio | Avg: 4.192 | Retail
+• YU | 110.5k | 46.55bio | Avg: 4.213 | Bandar
+• TP | 107.2k | 46.00bio | Avg: 4.292 | Bandar","• ZP | 1.2mio | 512.74bio | Avg: 4.167 | Bandar
+• AK | 196.6k | 82.86bio | Avg: 4.214 | Bandar
+• EP | 76.2k | 30.49bio | Avg: 4.001 | Mix
+• GR | 23.7k | 9.33bio | Avg: 3.935 | Bandar
+• BK | 13.2k | 5.66bio | Avg: 4.283 | Bandar",-785205,"Buyer: Retail 38%, Seller: Bandar 95%"
+ASDM,"• XL | 1.1k | 60.39mio | Avg: 551 | Retail
+• DH | 311 | 16.98mio | Avg: 546 | Bandar
+• PD | 190 | 11.21mio | Avg: 590 | Mix","• ZP | 1.5k | 82.00mio | Avg: 547 | Bandar
+• YB | 452 | 25.22mio | Avg: 558 | Retail",-354,"Buyer: Retail 69%, Seller: Bandar 77%"
+BDMN,"• YU | 10.1k | 2.48bio | Avg: 2.450 | Bandar
+• KK | 1.9k | 464.63mio | Avg: 2.448 | Bandar
+• XL | 1.7k | 412.00mio | Avg: 2.415 | Retail
+• OD | 1.4k | 340.84mio | Avg: 2.402 | Bandar
+• GR | 959 | 228.24mio | Avg: 2.380 | Bandar","• TP | 8.5k | 2.09bio | Avg: 2.450 | Bandar
+• PD | 3.9k | 949.01mio | Avg: 2.444 | Mix
+• ZP | 2.7k | 655.52mio | Avg: 2.410 | Bandar
+• CC | 1.9k | 461.48mio | Avg: 2.425 | Mix
+• BK | 1.3k | 311.47mio | Avg: 2.422 | Bandar",-2236,"Buyer: Bandar 89%, Seller: Bandar 68%"
+BGTG,"• AZ | 128.7k | 1.60bio | Avg: 124 | Retail
+• ZP | 102.5k | 1.28bio | Avg: 125 | Bandar
+• BK | 69.7k | 850.18mio | Avg: 122 | Bandar
+• CC | 40.5k | 502.63mio | Avg: 124 | Mix
+• AK | 23.1k | 283.86mio | Avg: 123 | Bandar","• YP | 97.2k | 1.19bio | Avg: 122 | Mix
+• PD | 71.8k | 904.58mio | Avg: 126 | Mix
+• LG | 35.3k | 408.95mio | Avg: 116 | Bandar
+• DR | 23.1k | 300.08mio | Avg: 130 | Retail
+• NI | 16.5k | 209.83mio | Avg: 127 | Bandar",120648,"Buyer: Bandar 54%, Seller: Mix 69%"
+BIPI,"• XL | 92.5k | 1.66bio | Avg: 179 | Retail
+• IF | 70.6k | 1.26bio | Avg: 179 | Mix
+• GR | 52.4k | 937.83mio | Avg: 179 | Bandar
+• CC | 49.9k | 893.64mio | Avg: 179 | Mix
+• BQ | 35.0k | 626.50mio | Avg: 179 | Bandar","• MG | 343.8k | 6.15bio | Avg: 179 | Mix
+• LG | 54.5k | 974.85mio | Avg: 179 | Bandar
+• BB | 15.0k | 268.50mio | Avg: 179 | Mix
+• YB | 10.2k | 183.47mio | Avg: 179 | Retail
+• SQ | 8.2k | 147.12mio | Avg: 179 | Bandar",-131267,"Buyer: Mix 40%, Seller: Mix 83%"
+BISI,"• CC | 920 | 75.53mio | Avg: 821 | Mix
+• YP | 859 | 69.24mio | Avg: 806 | Mix
+• ES | 25 | 1.98mio | Avg: 790 | Mix","• XL | 1.1k | 91.98mio | Avg: 822 | Retail
+• NI | 558 | 44.97mio | Avg: 806 | Bandar
+• AZ | 370 | 30.97mio | Avg: 837 | Retail
+• XC | 272 | 22.55mio | Avg: 829 | Retail",-515,"Buyer: Mix 100%, Seller: Retail 76%"
+BKSL,"• IF | 1.7mio | 26.37bio | Avg: 152 | Mix
+• MG | 544.1k | 7.62bio | Avg: 140 | Mix
+• BQ | 453.0k | 6.34bio | Avg: 140 | Bandar
+• NI | 321.6k | 4.60bio | Avg: 143 | Bandar
+• YU | 260.9k | 3.81bio | Avg: 146 | Bandar","• CP | 641.7k | 9.05bio | Avg: 141 | Mix
+• XL | 624.3k | 8.87bio | Avg: 142 | Retail
+• CC | 503.6k | 7.30bio | Avg: 145 | Mix
+• AK | 428.5k | 6.26bio | Avg: 146 | Bandar
+• IN | 301.0k | 4.21bio | Avg: 140 | Bandar",815402,"Buyer: Mix 69%, Seller: Mix 46%"
+BNII,"• AZ | 18.0k | 354.60mio | Avg: 197 | Retail
+• CC | 9.0k | 171.23mio | Avg: 190 | Mix
+• ZP | 6.3k | 129.58mio | Avg: 207 | Bandar
+• LS | 2.0k | 41.82mio | Avg: 204 | Retail
+• CP | 732 | 15.08mio | Avg: 206 | Mix","• YP | 8.3k | 162.37mio | Avg: 196 | Mix
+• XL | 7.8k | 153.17mio | Avg: 196 | Retail
+• XC | 7.1k | 143.96mio | Avg: 204 | Retail
+• EP | 4.2k | 87.58mio | Avg: 207 | Mix
+• PD | 3.7k | 73.31mio | Avg: 199 | Mix",4983,"Buyer: Retail 56%, Seller: Mix 52%"
+BPII,"• YJ | 557 | 28.91mio | Avg: 519 | Retail
+• XL | 393 | 24.09mio | Avg: 613 | Retail
+• QA | 24 | 1.33mio | Avg: 555 | Bandar
+• YB | 4 | 204.00k | Avg: 510 | Retail",• CC | 194 | 11.80mio | Avg: 608 | Mix,784,"Buyer: Retail 98%, Seller: Mix 100%"
+BRNA,• YU | 166 | 11.49mio | Avg: 692 | Bandar,"• ES | 200 | 14.80mio | Avg: 740 | Mix
+• CC | 10 | 725.00k | Avg: 725 | Mix",-44,"Buyer: Bandar 100%, Seller: Mix 100%"
+BTEK,"• YB | 376.1k | 714.66mio | Avg: 19 | Retail
+• MG | 325.8k | 651.56mio | Avg: 20 | Mix
+• YJ | 105.1k | 199.66mio | Avg: 19 | Retail
+• GR | 71.3k | 135.53mio | Avg: 19 | Bandar
+• PD | 27.5k | 55.01mio | Avg: 20 | Mix","• XL | 168.2k | 319.59mio | Avg: 19 | Retail
+• YP | 162.1k | 307.93mio | Avg: 19 | Mix
+• PI | 150.0k | 285.00mio | Avg: 19 | Retail
+• CC | 88.4k | 176.83mio | Avg: 20 | Mix
+• XC | 84.3k | 168.70mio | Avg: 20 | Retail",252799,"Buyer: Retail 53%, Seller: Retail 62%"
+BTPN,"• AZ | 500 | 100.80mio | Avg: 2.016 | Retail
+• DH | 105 | 22.05mio | Avg: 2.100 | Bandar
+• PG | 50 | 10.45mio | Avg: 2.090 | Mix
+• PD | 22 | 4.50mio | Avg: 2.044 | Mix
+• YB | 1 | 209.00k | Avg: 2.090 | Retail","• RG | 499 | 100.25mio | Avg: 2.009 | Bandar
+• CC | 134 | 28.77mio | Avg: 2.147 | Mix
+• XL | 104 | 21.72mio | Avg: 2.088 | Retail
+• YU | 6 | 1.33mio | Avg: 2.225 | Bandar",-65,"Buyer: Retail 74%, Seller: Bandar 68%"
+BULL,"• AI | 258.5k | 11.37bio | Avg: 440 | Bandar
+• KI | 249.7k | 10.26bio | Avg: 411 | Bandar
+• BK | 217.3k | 9.28bio | Avg: 427 | Bandar
+• CC | 181.6k | 7.97bio | Avg: 439 | Mix
+• YP | 137.6k | 6.01bio | Avg: 437 | Mix","• MG | 515.6k | 22.89bio | Avg: 444 | Mix
+• PD | 419.7k | 17.50bio | Avg: 417 | Mix
+• IN | 319.8k | 13.24bio | Avg: 414 | Bandar
+• TS | 166.3k | 7.50bio | Avg: 451 | Bandar
+• XL | 99.1k | 4.27bio | Avg: 431 | Retail",-475807,"Buyer: Bandar 69%, Seller: Mix 62%"
+BUVA,"• XL | 828.5k | 104.80bio | Avg: 1.265 | Retail
+• AZ | 117.1k | 14.54bio | Avg: 1.241 | Retail
+• CC | 95.0k | 11.95bio | Avg: 1.257 | Mix
+• OD | 88.6k | 11.07bio | Avg: 1.249 | Bandar
+• XC | 66.8k | 8.45bio | Avg: 1.265 | Retail","• PD | 289.2k | 35.89bio | Avg: 1.241 | Mix
+• AI | 275.0k | 33.86bio | Avg: 1.231 | Bandar
+• AK | 248.7k | 31.36bio | Avg: 1.261 | Bandar
+• LG | 137.1k | 16.92bio | Avg: 1.234 | Bandar
+• TP | 107.9k | 13.33bio | Avg: 1.236 | Bandar",138134,"Buyer: Retail 85%, Seller: Bandar 73%"
+CANI,• CC | 1.5k | 45.29mio | Avg: 310 | Mix,• XC | 923 | 28.61mio | Avg: 310 | Retail,538,"Buyer: Mix 100%, Seller: Retail 100%"
+CITA,"• SQ | 4.8k | 2.20bio | Avg: 4.560 | Bandar
+• PD | 1.5k | 647.24mio | Avg: 4.403 | Mix
+• XL | 966 | 444.75mio | Avg: 4.604 | Retail
+• NI | 533 | 247.05mio | Avg: 4.635 | Bandar
+• ZP | 513 | 221.82mio | Avg: 4.324 | Bandar","• CC | 2.5k | 1.13bio | Avg: 4.507 | Mix
+• YP | 1.5k | 689.45mio | Avg: 4.518 | Mix
+• IF | 1.4k | 656.13mio | Avg: 4.598 | Mix
+• DH | 951 | 443.17mio | Avg: 4.660 | Bandar
+• KK | 756 | 334.83mio | Avg: 4.429 | Bandar",1124,"Buyer: Bandar 71%, Seller: Mix 76%"
+CLPI,"• CC | 1.6k | 230.07mio | Avg: 1.472 | Mix
+• GR | 501 | 71.64mio | Avg: 1.430 | Bandar
+• YB | 242 | 36.35mio | Avg: 1.502 | Retail
+• YP | 120 | 18.04mio | Avg: 1.503 | Mix
+• DH | 68 | 10.01mio | Avg: 1.472 | Bandar","• XL | 2.3k | 332.54mio | Avg: 1.476 | Retail
+• OD | 466 | 67.38mio | Avg: 1.446 | Bandar
+• ZP | 48 | 6.91mio | Avg: 1.440 | Bandar
+• PC | 10 | 1.53mio | Avg: 1.530 | Bandar",-283,"Buyer: Mix 67%, Seller: Retail 81%"
+CPRO,"• AK | 591.5k | 3.67bio | Avg: 62 | Bandar
+• BK | 373.7k | 2.24bio | Avg: 60 | Bandar
+• YP | 122.1k | 757.16mio | Avg: 62 | Mix
+• LG | 91.0k | 555.23mio | Avg: 61 | Bandar
+• CC | 88.2k | 546.60mio | Avg: 62 | Mix","• CP | 443.7k | 2.66bio | Avg: 60 | Mix
+• XL | 429.0k | 2.62bio | Avg: 61 | Retail
+• ZP | 232.3k | 1.49bio | Avg: 64 | Bandar
+• YB | 216.6k | 1.36bio | Avg: 63 | Retail
+• NI | 157.6k | 961.56mio | Avg: 61 | Bandar",-212712,"Buyer: Bandar 83%, Seller: Retail 44%"
+CTBN,"• XL | 148 | 97.22mio | Avg: 6.569 | Retail
+• PD | 34 | 20.77mio | Avg: 6.110 | Mix
+• YP | 32 | 18.80mio | Avg: 5.875 | Mix
+• OD | 28 | 18.73mio | Avg: 6.688 | Bandar","• CC | 100 | 67.21mio | Avg: 6.721 | Mix
+• GR | 81 | 56.09mio | Avg: 6.925 | Bandar
+• YU | 33 | 22.81mio | Avg: 6.912 | Bandar",28,"Buyer: Retail 61%, Seller: Bandar 53%"
+DKFT,"• DR | 36.9k | 2.90bio | Avg: 788 | Retail
+• BQ | 36.5k | 2.88bio | Avg: 788 | Bandar
+• BK | 20.5k | 1.59bio | Avg: 779 | Bandar
+• YP | 7.7k | 608.90mio | Avg: 787 | Mix
+• AZ | 6.7k | 546.88mio | Avg: 816 | Retail","• ZP | 35.5k | 2.80bio | Avg: 789 | Bandar
+• XL | 31.4k | 2.41bio | Avg: 769 | Retail
+• CP | 25.2k | 1.98bio | Avg: 786 | Mix
+• AK | 18.7k | 1.50bio | Avg: 803 | Bandar
+• PD | 6.4k | 481.42mio | Avg: 756 | Mix",-8848,"Buyer: Bandar 53%, Seller: Bandar 46%"
+DMAS,"• BK | 93.2k | 1.23bio | Avg: 132 | Bandar
+• AK | 73.4k | 969.29mio | Avg: 132 | Bandar
+• CC | 41.9k | 548.81mio | Avg: 131 | Mix
+• OD | 38.5k | 507.82mio | Avg: 132 | Bandar
+• XL | 24.4k | 319.74mio | Avg: 131 | Retail","• PD | 90.0k | 1.18bio | Avg: 131 | Mix
+• YB | 57.0k | 746.07mio | Avg: 131 | Retail
+• DR | 55.5k | 733.23mio | Avg: 132 | Retail
+• NI | 52.1k | 682.72mio | Avg: 131 | Bandar
+• XC | 29.8k | 390.25mio | Avg: 131 | Retail",-12927,"Buyer: Bandar 76%, Seller: Retail 50%"
+DSFI,"• CC | 37.8k | 355.40mio | Avg: 94 | Mix
+• AK | 12.9k | 120.18mio | Avg: 93 | Bandar
+• ZP | 10.6k | 98.76mio | Avg: 93 | Bandar
+• ES | 6.8k | 62.30mio | Avg: 91 | Mix
+• BK | 5.3k | 49.91mio | Avg: 95 | Bandar","• XL | 60.5k | 568.95mio | Avg: 94 | Retail
+• PD | 9.7k | 90.94mio | Avg: 94 | Mix
+• YB | 9.6k | 88.54mio | Avg: 92 | Retail
+• KK | 7.3k | 68.32mio | Avg: 94 | Bandar
+• XC | 4.6k | 42.78mio | Avg: 94 | Retail",-18195,"Buyer: Mix 61%, Seller: Retail 82%"
+ESTI,"• CC | 10.9k | 159.97mio | Avg: 147 | Mix
+• AK | 6.4k | 95.66mio | Avg: 149 | Bandar
+• LG | 5.0k | 74.91mio | Avg: 151 | Bandar
+• BK | 4.0k | 59.66mio | Avg: 150 | Bandar
+• ZP | 3.9k | 59.55mio | Avg: 151 | Bandar","• XL | 10.7k | 159.55mio | Avg: 149 | Retail
+• MG | 10.1k | 142.95mio | Avg: 142 | Mix
+• GR | 5.0k | 72.00mio | Avg: 144 | Bandar
+• NI | 2.4k | 36.89mio | Avg: 151 | Bandar
+• XC | 2.0k | 29.43mio | Avg: 146 | Retail",-50,"Buyer: Bandar 64%, Seller: Retail 42%"
+EXCL,"• AI | 563.3k | 183.06bio | Avg: 3.250 | Bandar
+• SS | 145.3k | 47.31bio | Avg: 3.256 | Bandar
+• DP | 142.7k | 46.66bio | Avg: 3.271 | Bandar
+• XL | 77.1k | 25.37bio | Avg: 3.289 | Retail
+• AZ | 72.3k | 23.84bio | Avg: 3.296 | Retail","• YU | 502.8k | 163.82bio | Avg: 3.258 | Bandar
+• PD | 196.3k | 64.20bio | Avg: 3.270 | Mix
+• BQ | 167.5k | 54.52bio | Avg: 3.254 | Bandar
+• KZ | 120.1k | 39.41bio | Avg: 3.281 | Mix
+• BB | 108.3k | 35.27bio | Avg: 3.257 | Mix",-94406,"Buyer: Bandar 85%, Seller: Bandar 61%"
+HMSP,"• AK | 83.7k | 6.28bio | Avg: 750 | Bandar
+• BQ | 63.2k | 4.87bio | Avg: 771 | Bandar
+• SQ | 53.3k | 4.03bio | Avg: 756 | Bandar
+• ZP | 38.0k | 2.80bio | Avg: 738 | Bandar
+• GR | 23.5k | 1.81bio | Avg: 768 | Bandar","• YP | 138.1k | 10.43bio | Avg: 755 | Mix
+• XL | 44.4k | 3.32bio | Avg: 748 | Retail
+• CC | 24.6k | 1.89bio | Avg: 770 | Mix
+• DP | 20.0k | 1.55bio | Avg: 776 | Bandar
+• PD | 16.5k | 1.24bio | Avg: 747 | Mix",18092,"Buyer: Bandar 100%, Seller: Mix 74%"
+INAI,"• XL | 21.8k | 545.48mio | Avg: 250 | Retail
+• YU | 1.0k | 25.00mio | Avg: 250 | Bandar
+• EP | 871 | 21.86mio | Avg: 251 | Mix
+• DH | 443 | 11.07mio | Avg: 250 | Bandar
+• YB | 103 | 2.58mio | Avg: 250 | Retail","• OD | 8.5k | 213.12mio | Avg: 250 | Bandar
+• XC | 7.5k | 188.03mio | Avg: 250 | Retail
+• YP | 6.1k | 151.62mio | Avg: 250 | Mix
+• PD | 1.3k | 31.38mio | Avg: 250 | Mix
+• XA | 1.2k | 30.62mio | Avg: 250 | Bandar",-355,"Buyer: Retail 90%, Seller: Bandar 40%"
+INCI,"• NI | 1.0k | 73.84mio | Avg: 710 | Bandar
+• OD | 737 | 53.29mio | Avg: 723 | Bandar
+• PD | 71 | 4.98mio | Avg: 702 | Mix","• YP | 1.1k | 79.67mio | Avg: 712 | Mix
+• AZ | 600 | 40.86mio | Avg: 681 | Retail
+• CC | 272 | 18.96mio | Avg: 697 | Mix",-143,"Buyer: Bandar 96%, Seller: Mix 70%"
+INCO,"• BK | 133.6k | 81.45bio | Avg: 6.097 | Bandar
+• CC | 128.8k | 78.87bio | Avg: 6.122 | Mix
+• YU | 22.5k | 13.85bio | Avg: 6.153 | Bandar
+• NI | 9.7k | 6.01bio | Avg: 6.179 | Bandar
+• OD | 9.7k | 5.90bio | Avg: 6.114 | Bandar","• KZ | 215.4k | 133.22bio | Avg: 6.186 | Mix
+• AK | 31.0k | 18.89bio | Avg: 6.100 | Bandar
+• ZP | 15.8k | 9.70bio | Avg: 6.130 | Bandar
+• XL | 11.2k | 6.65bio | Avg: 5.955 | Retail
+• AZ | 9.2k | 5.58bio | Avg: 6.100 | Retail",21815,"Buyer: Bandar 58%, Seller: Mix 76%"
+INDY,"• YU | 99.0k | 32.86bio | Avg: 3.318 | Bandar
+• PD | 73.3k | 23.96bio | Avg: 3.269 | Mix
+• AI | 55.5k | 18.52bio | Avg: 3.334 | Bandar
+• AZ | 51.0k | 16.76bio | Avg: 3.283 | Retail
+• IF | 25.7k | 8.47bio | Avg: 3.295 | Mix","• KZ | 52.6k | 17.21bio | Avg: 3.269 | Mix
+• CC | 39.4k | 13.03bio | Avg: 3.302 | Mix
+• AK | 39.6k | 12.93bio | Avg: 3.265 | Bandar
+• ZP | 36.8k | 12.07bio | Avg: 3.283 | Bandar
+• BK | 36.1k | 12.01bio | Avg: 3.327 | Bandar",100088,"Buyer: Bandar 51%, Seller: Bandar 55%"
+INDR,"• ZP | 2.5k | 791.68mio | Avg: 3.123 | Bandar
+• SQ | 814 | 245.67mio | Avg: 3.018 | Bandar
+• AK | 227 | 70.48mio | Avg: 3.105 | Bandar
+• YU | 202 | 56.56mio | Avg: 2.800 | Bandar
+• CP | 161 | 48.35mio | Avg: 3.003 | Mix","• PD | 2.0k | 605.02mio | Avg: 3.079 | Mix
+• YP | 1.2k | 370.94mio | Avg: 3.048 | Mix
+• TP | 359 | 114.88mio | Avg: 3.200 | Bandar
+• XL | 136 | 40.02mio | Avg: 2.943 | Retail
+• DR | 84 | 24.52mio | Avg: 2.919 | Retail",178,"Buyer: Bandar 96%, Seller: Mix 85%"
+INKP,"• DH | 62.4k | 54.25bio | Avg: 8.698 | Bandar
+• PP | 24.5k | 21.49bio | Avg: 8.765 | Bandar
+• BK | 9.3k | 8.06bio | Avg: 8.680 | Bandar
+• GR | 8.7k | 7.70bio | Avg: 8.872 | Bandar
+• BB | 8.0k | 7.04bio | Avg: 8.798 | Mix","• PD | 57.1k | 49.96bio | Avg: 8.743 | Mix
+• YU | 42.3k | 37.68bio | Avg: 8.907 | Bandar
+• AI | 9.2k | 7.41bio | Avg: 8.046 | Bandar
+• AZ | 8.6k | 7.37bio | Avg: 8.586 | Retail
+• YJ | 6.1k | 5.34bio | Avg: 8.806 | Retail",-10461,"Buyer: Bandar 93%, Seller: Mix 46%"
+INTA,"• XL | 7.6k | 106.36mio | Avg: 140 | Retail
+• MG | 2.9k | 39.90mio | Avg: 140 | Mix
+• YP | 2.8k | 39.63mio | Avg: 140 | Mix
+• GR | 2.3k | 31.53mio | Avg: 140 | Bandar
+• XC | 610 | 8.54mio | Avg: 140 | Retail","• AO | 13.8k | 192.61mio | Avg: 140 | Bandar
+• CP | 5.2k | 72.39mio | Avg: 140 | Mix
+• OD | 1.6k | 22.46mio | Avg: 140 | Bandar
+• TP | 200 | 2.80mio | Avg: 140 | Bandar",-4593,"Buyer: Retail 51%, Seller: Bandar 75%"
+JPFA,"• ZP | 167.1k | 42.86bio | Avg: 2.565 | Bandar
+• CC | 41.0k | 10.45bio | Avg: 2.550 | Mix
+• BK | 32.2k | 8.24bio | Avg: 2.559 | Bandar
+• LG | 30.4k | 7.80bio | Avg: 2.563 | Bandar
+• YU | 26.0k | 6.70bio | Avg: 2.574 | Bandar","• KZ | 294.9k | 75.51bio | Avg: 2.560 | Mix
+• NI | 10.2k | 2.57bio | Avg: 2.510 | Bandar
+• DP | 8.7k | 2.26bio | Avg: 2.597 | Bandar
+• IF | 6.1k | 1.58bio | Avg: 2.587 | Mix
+• PD | 5.0k | 1.27bio | Avg: 2.524 | Mix",-28251,"Buyer: Bandar 86%, Seller: Mix 94%"
+JTPE,"• IU | 3.4k | 192.06mio | Avg: 558 | Bandar
+• IN | 3.2k | 170.43mio | Avg: 539 | Bandar
+• DH | 2.5k | 140.11mio | Avg: 560 | Bandar
+• DU | 2.2k | 119.11mio | Avg: 537 | Bandar
+• RO | 2.1k | 115.94mio | Avg: 550 | Bandar","• YP | 13.5k | 724.47mio | Avg: 537 | Mix
+• CC | 3.8k | 206.69mio | Avg: 550 | Mix
+• OD | 2.4k | 130.11mio | Avg: 552 | Bandar
+• KK | 1.9k | 105.90mio | Avg: 560 | Bandar
+• LS | 1.5k | 81.56mio | Avg: 547 | Retail",-9556,"Buyer: Bandar 100%, Seller: Mix 75%"
+KICI,"• XL | 14.7k | 367.82mio | Avg: 251 | Retail
+• XC | 6.2k | 155.70mio | Avg: 250 | Retail
+• CC | 2.7k | 67.94mio | Avg: 252 | Mix
+• KK | 2.4k | 57.81mio | Avg: 246 | Bandar
+• YP | 956 | 24.09mio | Avg: 252 | Mix","• CP | 14.2k | 361.82mio | Avg: 254 | Mix
+• MG | 5.4k | 136.94mio | Avg: 255 | Mix
+• PC | 2.0k | 50.18mio | Avg: 246 | Bandar
+• AO | 1.6k | 35.04mio | Avg: 219 | Bandar
+• BQ | 1.1k | 27.85mio | Avg: 252 | Bandar",2524,"Buyer: Retail 78%, Seller: Mix 81%"
+LPCK,"• XL | 6.6k | 486.71mio | Avg: 738 | Retail
+• CP | 2.3k | 159.78mio | Avg: 684 | Mix
+• NI | 2.1k | 156.07mio | Avg: 730 | Bandar
+• AZ | 1.8k | 119.19mio | Avg: 678 | Retail
+• AK | 1.3k | 98.51mio | Avg: 748 | Bandar","• PD | 8.1k | 571.95mio | Avg: 709 | Mix
+• CC | 3.8k | 263.62mio | Avg: 700 | Mix
+• ZP | 1.8k | 128.30mio | Avg: 703 | Bandar
+• YU | 1.1k | 83.74mio | Avg: 732 | Bandar
+• RO | 498 | 38.59mio | Avg: 775 | Bandar",-1156,"Buyer: Retail 59%, Seller: Mix 77%"
+LPPF,"• CC | 98.2k | 17.95bio | Avg: 1.828 | Mix
+• AK | 6.7k | 1.18bio | Avg: 1.763 | Bandar
+• GR | 3.0k | 536.26mio | Avg: 1.781 | Bandar
+• YU | 2.6k | 474.91mio | Avg: 1.828 | Bandar
+• HP | 1.2k | 226.58mio | Avg: 1.885 | Bandar","• XL | 35.5k | 6.45bio | Avg: 1.816 | Retail
+• XC | 14.7k | 2.70bio | Avg: 1.837 | Retail
+• ZP | 12.2k | 2.21bio | Avg: 1.811 | Bandar
+• YP | 10.5k | 1.89bio | Avg: 1.802 | Mix
+• SQ | 9.6k | 1.73bio | Avg: 1.793 | Bandar",29151,"Buyer: Mix 88%, Seller: Retail 61%"
+MBAP,"• CC | 366 | 57.39mio | Avg: 1.568 | Mix
+• DH | 251 | 40.16mio | Avg: 1.600 | Bandar
+• OD | 124 | 19.53mio | Avg: 1.575 | Bandar
+• YB | 29 | 4.57mio | Avg: 1.577 | Retail
+• TF | 8 | 1.31mio | Avg: 1.639 | Retail","• XL | 474 | 73.99mio | Avg: 1.561 | Retail
+• PD | 257 | 41.17mio | Avg: 1.602 | Mix
+• DX | 211 | 33.76mio | Avg: 1.600 | Bandar
+• PC | 2 | 319.00k | Avg: 1.595 | Bandar",-166,"Buyer: Bandar 48%, Seller: Retail 50%"
+MEDC,"• AZ | 104.0k | 15.00bio | Avg: 1.442 | Retail
+• KK | 96.9k | 14.27bio | Avg: 1.473 | Bandar
+• BB | 84.0k | 12.17bio | Avg: 1.450 | Mix
+• LG | 78.5k | 11.74bio | Avg: 1.495 | Bandar
+• IF | 42.1k | 6.03bio | Avg: 1.432 | Mix","• AK | 261.8k | 38.12bio | Avg: 1.456 | Bandar
+• ZP | 55.4k | 8.04bio | Avg: 1.450 | Bandar
+• XA | 37.9k | 5.10bio | Avg: 1.343 | Bandar
+• CP | 35.1k | 5.08bio | Avg: 1.448 | Mix
+• CC | 34.6k | 5.04bio | Avg: 1.457 | Mix",-19348,"Buyer: Bandar 43%, Seller: Bandar 84%"
+MEGA,"• CC | 61 | 19.53mio | Avg: 3.201 | Mix
+• XC | 24 | 7.69mio | Avg: 3.204 | Retail","• NI | 93 | 29.80mio | Avg: 3.204 | Bandar
+• AG | 40 | 12.80mio | Avg: 3.200 | Bandar
+• RF | 1 | 315.00k | Avg: 3.150 | Bandar",-49,"Buyer: Mix 72%, Seller: Bandar 100%"
+MSKY,"• NI | 21.0k | 164.03mio | Avg: 78 | Bandar
+• RG | 13.0k | 97.50mio | Avg: 75 | Bandar
+• SQ | 6.3k | 50.08mio | Avg: 79 | Bandar
+• AK | 5.7k | 43.46mio | Avg: 76 | Bandar
+• YP | 5.7k | 42.48mio | Avg: 75 | Mix","• XL | 46.5k | 348.40mio | Avg: 75 | Retail
+• GR | 14.5k | 111.64mio | Avg: 77 | Bandar
+• YB | 12.5k | 93.73mio | Avg: 75 | Retail
+• OD | 4.0k | 30.16mio | Avg: 75 | Bandar
+• BQ | 1.9k | 14.37mio | Avg: 77 | Bandar",-27585,"Buyer: Bandar 89%, Seller: Retail 74%"
+NISP,"• AO | 15.0k | 2.03bio | Avg: 1.356 | Bandar
+• TP | 12.4k | 1.68bio | Avg: 1.360 | Bandar
+• ZP | 9.5k | 1.32bio | Avg: 1.390 | Bandar
+• AK | 3.6k | 501.32mio | Avg: 1.378 | Bandar
+• DX | 3.2k | 456.90mio | Avg: 1.415 | Bandar","• YP | 17.1k | 2.37bio | Avg: 1.385 | Mix
+• BK | 8.6k | 1.19bio | Avg: 1.385 | Bandar
+• SQ | 6.2k | 824.64mio | Avg: 1.340 | Bandar
+• XL | 5.3k | 732.50mio | Avg: 1.373 | Retail
+• GR | 4.3k | 581.23mio | Avg: 1.366 | Bandar",2227,"Buyer: Bandar 100%, Seller: Bandar 46%"
+PALM,"• AZ | 15.9k | 610.16mio | Avg: 383 | Retail
+• GR | 3.6k | 129.66mio | Avg: 356 | Bandar
+• YP | 3.3k | 123.13mio | Avg: 371 | Mix
+• MU | 2.4k | 90.71mio | Avg: 375 | Bandar
+• AK | 2.0k | 78.25mio | Avg: 393 | Bandar","• PD | 18.7k | 673.85mio | Avg: 360 | Mix
+• KI | 7.9k | 301.38mio | Avg: 380 | Bandar
+• XL | 5.0k | 191.45mio | Avg: 381 | Retail
+• CP | 2.5k | 96.12mio | Avg: 389 | Mix
+• NI | 2.1k | 79.33mio | Avg: 384 | Bandar",-8909,"Buyer: Retail 58%, Seller: Mix 59%"
+PANS,"• DH | 937 | 136.61mio | Avg: 1.458 | Bandar
+• XL | 367 | 54.39mio | Avg: 1.482 | Retail
+• TP | 296 | 43.96mio | Avg: 1.485 | Bandar","• CC | 478 | 69.69mio | Avg: 1.458 | Mix
+• YB | 328 | 48.35mio | Avg: 1.474 | Retail
+• XC | 315 | 46.62mio | Avg: 1.480 | Retail
+• XA | 82 | 12.40mio | Avg: 1.512 | Bandar",397,"Buyer: Bandar 77%, Seller: Retail 53%"
+PKPK,"• ZP | 15.6k | 3.64bio | Avg: 2.330 | Bandar
+• XL | 2.5k | 524.64mio | Avg: 2.107 | Retail
+• BQ | 2.0k | 361.38mio | Avg: 1.806 | Bandar
+• PG | 1.5k | 265.50mio | Avg: 1.770 | Mix
+• AI | 900 | 180.63mio | Avg: 2.007 | Bandar","• KK | 6.3k | 1.15bio | Avg: 1.818 | Bandar
+• CC | 4.8k | 1.10bio | Avg: 2.284 | Mix
+• EP | 3.3k | 703.40mio | Avg: 2.138 | Mix
+• CP | 3.3k | 672.24mio | Avg: 2.052 | Mix
+• LG | 2.4k | 518.17mio | Avg: 2.128 | Bandar",2368,"Buyer: Bandar 82%, Seller: Mix 56%"
+PSDN,"• YP | 2.1k | 24.80mio | Avg: 117 | Mix
+• DR | 2.1k | 23.31mio | Avg: 111 | Retail
+• XC | 715 | 8.51mio | Avg: 119 | Retail
+• PD | 369 | 4.39mio | Avg: 119 | Mix
+• BK | 158 | 1.93mio | Bandar","• YB | 3.5k | 37.82mio | Avg: 109 | Retail
+• XA | 1.0k | 10.60mio | Avg: 106 | Bandar
+• AK | 747 | 8.67mio | Avg: 116 | Bandar
+• CC | 598 | 6.82mio | Avg: 114 | Mix
+• TP | 236 | 2.93mio | Avg: 124 | Bandar",-589,"Buyer: Retail 52%, Seller: Retail 57%"
+PSKT,"• OD | 67.0k | 1.71bio | Avg: 255 | Bandar
+• YP | 29.4k | 781.59mio | Avg: 266 | Mix
+• CP | 28.0k | 734.49mio | Avg: 262 | Mix
+• YJ | 18.0k | 527.40mio | Avg: 293 | Retail
+• DH | 12.4k | 329.77mio | Avg: 265 | Bandar","• XC | 51.1k | 1.33bio | Avg: 261 | Retail
+• YB | 43.1k | 1.11bio | Avg: 258 | Retail
+• AZ | 24.8k | 667.20mio | Avg: 269 | Retail
+• KK | 22.5k | 602.92mio | Avg: 268 | Bandar
+• NI | 14.5k | 396.67mio | Avg: 273 | Bandar",-1198,"Buyer: Bandar 51%, Seller: Retail 76%"
+PTBA,"• NI | 13.0k | 3.13bio | Avg: 2.405 | Bandar
+• BK | 12.7k | 2.98bio | Avg: 2.352 | Bandar
+• YU | 10.1k | 2.40bio | Avg: 2.372 | Bandar
+• AK | 6.7k | 1.57bio | Avg: 2.344 | Bandar
+• CC | 5.5k | 1.30bio | Avg: 2.346 | Mix","• FO | 12.7k | 3.08bio | Avg: 2.424 | Bandar
+• DX | 11.8k | 2.76bio | Avg: 2.332 | Bandar
+• RF | 6.0k | 1.38bio | Avg: 2.300 | Bandar
+• GR | 4.0k | 945.93mio | Avg: 2.342 | Bandar
+• XC | 3.2k | 762.80mio | Avg: 2.366 | Retail",10282,"Buyer: Bandar 88%, Seller: Bandar 91%"
+RBMS,"• YP | 37.6k | 176.64mio | Avg: 47 | Mix
+• AZ | 9.8k | 45.01mio | Avg: 46 | Retail
+• PD | 530 | 2.44mio | Avg: 46 | Mix","• BS | 24.3k | 111.73mio | Avg: 46 | Mix
+• XL | 22.6k | 104.14mio | Avg: 46 | Retail
+• MU | 1.9k | 9.53mio | Avg: 51 | Bandar",-899,"Buyer: Mix 80%, Seller: Mix 50%"
+RUIS,"• EP | 3.2k | 67.95mio | Avg: 212 | Mix
+• YP | 1.9k | 44.11mio | Avg: 227 | Mix
+• PC | 1.8k | 40.32mio | Avg: 224 | Bandar
+• AK | 1.0k | 23.30mio | Avg: 230 | Bandar
+• LG | 701 | 16.54mio | Avg: 236 | Bandar","• GR | 2.1k | 47.81mio | Avg: 223 | Bandar
+• YB | 1.7k | 37.59mio | Avg: 221 | Retail
+• XL | 1.4k | 30.25mio | Avg: 220 | Retail
+• XA | 1.2k | 27.98mio | Avg: 228 | Bandar
+• YU | 1.2k | 26.16mio | Avg: 218 | Bandar",1015,"Buyer: Mix 59%, Seller: Bandar 60%"
+SCCO,"• XL | 332 | 78.45mio | Avg: 2.363 | Retail
+• PD | 296 | 69.94mio | Avg: 2.363 | Mix","• CC | 291 | 68.71mio | Avg: 2.361 | Mix
+• XC | 171 | 40.70mio | Avg: 2.380 | Retail
+• AO | 12 | 3.10mio | Avg: 2.580 | Bandar",154,"Buyer: Retail 53%, Seller: Mix 61%"
+SGRO,"• AO | 18.1k | 14.07bio | Avg: 7.775 | Bandar
+• SA | 13.5k | 10.46bio | Avg: 7.757 | Bandar
+• YJ | 5.0k | 3.87bio | Avg: 7.775 | Retail
+• KZ | 4.4k | 3.38bio | Avg: 7.767 | Mix
+• AZ | 855 | 664.76mio | Avg: 7.775 | Retail","• SQ | 9.6k | 7.44bio | Avg: 7.747 | Bandar
+• XL | 7.6k | 5.92bio | Avg: 7.769 | Retail
+• AK | 5.1k | 3.99bio | Avg: 7.775 | Bandar
+• PD | 3.7k | 2.89bio | Avg: 7.774 | Mix
+• MG | 3.7k | 2.85bio | Avg: 7.776 | Mix",12049,"Buyer: Bandar 76%, Seller: Bandar 50%"
+SMAR,"• QA | 654 | 360.09mio | Avg: 5.506 | Bandar
+• LG | 499 | 274.05mio | Avg: 5.492 | Bandar
+• YP | 305 | 156.19mio | Avg: 5.121 | Mix
+• XL | 136 | 72.56mio | Avg: 5.335 | Retail
+• HP | 102 | 52.52mio | Avg: 5.149 | Bandar","• GR | 421 | 224.06mio | Avg: 5.322 | Bandar
+• CP | 297 | 162.13mio | Avg: 5.459 | Mix
+• AI | 321 | 160.53mio | Avg: 5.001 | Bandar
+• DX | 340 | 157.22mio | Avg: 4.624 | Bandar
+• PD | 162 | 86.61mio | Avg: 5.346 | Mix",155,"Buyer: Bandar 74%, Seller: Bandar 70%"
+SMRA,"• KI | 379.6k | 14.05bio | Avg: 370 | Bandar
+• CC | 32.8k | 1.23bio | Avg: 374 | Mix
+• AK | 20.6k | 769.99mio | Avg: 374 | Bandar
+• CP | 6.8k | 258.93mio | Avg: 380 | Mix
+• XA | 6.1k | 231.57mio | Avg: 379 | Bandar","• YP | 88.2k | 3.31bio | Avg: 375 | Mix
+• PD | 58.4k | 2.21bio | Avg: 378 | Mix
+• XL | 48.8k | 1.82bio | Avg: 373 | Retail
+• SQ | 48.0k | 1.80bio | Avg: 374 | Bandar
+• AG | 45.4k | 1.71bio | Avg: 377 | Bandar",157110,"Buyer: Bandar 91%, Seller: Mix 51%"
+SRTG,"• XL | 85.8k | 14.45bio | Avg: 1.683 | Retail
+• CC | 41.9k | 6.98bio | Avg: 1.666 | Mix
+• CP | 27.0k | 4.27bio | Avg: 1.583 | Mix
+• PD | 17.4k | 2.88bio | Avg: 1.650 | Mix
+• XC | 7.7k | 1.27bio | Avg: 1.648 | Retail","• YU | 73.4k | 11.46bio | Avg: 1.562 | Bandar
+• KZ | 53.0k | 8.63bio | Avg: 1.627 | Mix
+• AZ | 37.5k | 6.26bio | Avg: 1.667 | Retail
+• AI | 22.8k | 3.81bio | Avg: 1.671 | Bandar
+• TP | 5.4k | 885.39mio | Avg: 1.654 | Bandar",-12186,"Buyer: Retail 52%, Seller: Bandar 53%"
+TINS,"• YU | 123.9k | 40.36bio | Avg: 3.257 | Bandar
+• BB | 58.3k | 18.64bio | Avg: 3.196 | Mix
+• NI | 30.7k | 9.76bio | Avg: 3.177 | Bandar
+• ZP | 25.0k | 7.80bio | Avg: 3.119 | Bandar
+• PD | 24.3k | 7.48bio | Avg: 3.080 | Mix","• AK | 71.8k | 22.83bio | Avg: 3.178 | Bandar
+• DR | 63.7k | 20.29bio | Avg: 3.186 | Retail
+• BK | 59.6k | 19.28bio | Avg: 3.235 | Bandar
+• OD | 52.0k | 16.83bio | Avg: 3.236 | Bandar
+• CC | 28.6k | 9.10bio | Avg: 3.181 | Mix",-13521,"Buyer: Bandar 69%, Seller: Bandar 67%"
+TOWR,"• KK | 42.9k | 2.25bio | Avg: 525 | Bandar
+• YP | 35.7k | 1.82bio | Avg: 510 | Mix
+• MG | 31.4k | 1.61bio | Avg: 512 | Mix
+• RG | 26.0k | 1.37bio | Avg: 527 | Bandar
+• YU | 20.8k | 1.06bio | Avg: 511 | Bandar","• ZP | 67.3k | 3.42bio | Avg: 508 | Bandar
+• AK | 61.2k | 3.13bio | Avg: 512 | Bandar
+• XL | 34.4k | 1.75bio | Avg: 509 | Retail
+• LG | 30.9k | 1.63bio | Avg: 527 | Bandar
+• CC | 27.4k | 1.37bio | Avg: 501 | Mix",-64367,"Buyer: Bandar 57%, Seller: Bandar 72%"
+TRIS,"• PD | 4.3k | 74.18mio | Avg: 172 | Mix
+• KK | 3.6k | 60.84mio | Avg: 169 | Bandar
+• OD | 573 | 10.20mio | Avg: 178 | Bandar","• XL | 7.2k | 119.54mio | Avg: 166 | Retail
+• TF | 39 | 639.60k | Avg: 164 | Retail
+• YB | 5 | 90.00k | Retail
+• ZR | 5 | 84.00k | Avg: 168 | Bandar
+• BR | 5 | 80.50k | Avg: 161 | Bandar",1231,"Buyer: Mix 51%, Seller: Retail 100%"
+UNIC,• KK | 59 | 55.58mio | Avg: 9.420 | Bandar,• XL | 36 | 33.87mio | Avg: 9.408 | Retail,23,"Buyer: Bandar 100%, Seller: Retail 100%"
+ULTJ,"• AH | 51.4k | 7.36bio | Avg: 1.432 | Bandar
+• KZ | 19.9k | 2.90bio | Avg: 1.457 | Mix
+• AT | 6.8k | 986.10mio | Avg: 1.457 | Bandar
+• GR | 5.8k | 831.73mio | Avg: 1.436 | Bandar
+• ZP | 1.6k | 230.01mio | Avg: 1.453 | Bandar","• BK | 18.1k | 2.63bio | Avg: 1.454 | Bandar
+• DP | 15.9k | 2.32bio | Avg: 1.460 | Bandar
+• LG | 10.5k | 1.48bio | Avg: 1.411 | Bandar
+• XL | 8.5k | 1.22bio | Avg: 1.433 | Retail
+• KK | 7.3k | 1.05bio | Avg: 1.431 | Bandar",25162,"Buyer: Bandar 77%, Seller: Bandar 86%"
+WEHA,"• CC | 13.7k | 162.67mio | Avg: 119 | Mix
+• ZP | 6.3k | 72.89mio | Avg: 115 | Bandar
+• AF | 6.0k | 70.20mio | Avg: 117 | Retail
+• KI | 4.9k | 60.54mio | Avg: 123 | Bandar
+• GI | 3.5k | 41.30mio | Avg: 118 | Bandar","• XL | 27.2k | 315.13mio | Avg: 116 | Retail
+• DX | 3.5k | 42.14mio | Avg: 119 | Bandar
+• SQ | 2.0k | 24.41mio | Avg: 125 | Bandar
+• GR | 1.9k | 21.24mio | Avg: 114 | Bandar
+• CD | 1.6k | 19.24mio | Avg: 120 | Bandar",-1696,"Buyer: Bandar 43%, Seller: Retail 75%"
+WINS,"• NI | 84.6k | 4.45bio | Avg: 526 | Bandar
+• KZ | 16.8k | 826.91mio | Avg: 493 | Mix
+• AO | 7.7k | 375.19mio | Avg: 490 | Bandar
+• KK | 1.6k | 79.96mio | Avg: 508 | Bandar
+• SQ | 1.3k | 65.32mio | Avg: 499 | Bandar","• EP | 39.2k | 2.06bio | Avg: 526 | Mix
+• YP | 18.7k | 945.31mio | Avg: 505 | Mix
+• XL | 16.9k | 842.16mio | Avg: 499 | Retail
+• CC | 8.7k | 450.30mio | Avg: 518 | Mix
+• BK | 5.2k | 271.65mio | Avg: 521 | Bandar",23150,"Buyer: Bandar 85%, Seller: Mix 75%"
+POWR,"• LG | 26.3k | 1.84bio | Avg: 699 | Bandar
+• CC | 23.3k | 1.63bio | Avg: 697 | Mix
+• XA | 6.9k | 486.22mio | Avg: 700 | Bandar
+• YP | 5.8k | 404.64mio | Avg: 693 | Mix
+• PD | 5.6k | 387.04mio | Avg: 694 | Mix","• NI | 39.4k | 2.75bio | Avg: 698 | Bandar
+• OD | 12.0k | 834.97mio | Avg: 695 | Bandar
+• YU | 7.3k | 509.61mio | Avg: 698 | Bandar
+• AI | 6.4k | 446.85mio | Avg: 697 | Bandar
+• KK | 2.7k | 191.81mio | Avg: 698 | Bandar",54,"Buyer: Mix 51%, Seller: Bandar 100%"
+ZINC,"• PD | 35.8k | 136.17mio | Avg: 38 | Mix
+• OK | 30.0k | 114.00mio | Avg: 38 | Retail
+• LG | 24.7k | 93.98mio | Avg: 38 | Bandar
+• AT | 23.0k | 87.40mio | Avg: 38 | Bandar
+• MG | 21.0k | 79.80mio | Avg: 38 | Mix","• XL | 118.9k | 451.86mio | Avg: 38 | Retail
+• YP | 32.0k | 121.75mio | Avg: 38 | Mix
+• XC | 21.1k | 80.26mio | Avg: 38 | Retail
+• SQ | 12.3k | 46.84mio | Avg: 38 | Bandar
+• GR | 4.8k | 18.09mio | Avg: 38 | Bandar",-54590,"Buyer: Mix 42%, Seller: Retail 74%"
+MORA,"• YU | 14.6k | 19.42bio | Avg: 13.313 | Bandar
+• CC | 1.3k | 1.57bio | Avg: 11.700 | Mix
+• SQ | 1.1k | 1.32bio | Avg: 11.519 | Bandar
+• CP | 620 | 730.67mio | Avg: 11.785 | Mix
+• OD | 365 | 419.24mio | Avg: 11.486 | Bandar","• MG | 5.4k | 6.23bio | Avg: 11.610 | Mix
+• AI | 3.3k | 4.17bio | Avg: 12.681 | Bandar
+• DP | 3.5k | 3.98bio | Avg: 11.425 | Bandar
+• PD | 2.3k | 2.72bio | Avg: 11.939 | Mix
+• IF | 1.7k | 1.91bio | Avg: 11.481 | Mix",1996,"Buyer: Bandar 89%, Seller: Mix 58%"
+PRIM,"• PD | 34.5k | 255.56mio | Avg: 74 | Mix
+• AT | 16.1k | 125.42mio | Avg: 78 | Bandar
+• CC | 15.4k | 115.55mio | Avg: 75 | Mix
+• XC | 14.7k | 108.64mio | Avg: 74 | Retail
+• LS | 7.9k | 58.46mio | Avg: 74 | Retail","• XL | 33.1k | 244.90mio | Avg: 74 | Retail
+• AI | 16.8k | 123.98mio | Avg: 74 | Bandar
+• YP | 14.8k | 109.62mio | Avg: 74 | Mix
+• YB | 11.2k | 79.36mio | Avg: 71 | Retail
+• CP | 10.7k | 76.87mio | Avg: 72 | Mix",2087,"Buyer: Mix 56%, Seller: Retail 51%"
+TCPI,"• TP | 2.7k | 2.81bio | Avg: 10.320 | Bandar
+• AK | 1.2k | 1.20bio | Avg: 10.326 | Bandar
+• YU | 295 | 310.52mio | Avg: 10.526 | Bandar
+• SQ | 99 | 100.60mio | Avg: 10.162 | Bandar
+• BR | 57 | 59.19mio | Avg: 10.384 | Bandar","• TS | 1.8k | 1.88bio | Avg: 10.255 | Bandar
+• CC | 1.1k | 1.14bio | Avg: 10.477 | Mix
+• BK | 446 | 465.62mio | Avg: 10.440 | Bandar
+• ZP | 345 | 358.01mio | Avg: 10.377 | Bandar
+• BQ | 169 | 168.22mio | Avg: 9.954 | Bandar",454,"Buyer: Bandar 100%, Seller: Bandar 72%"
+DIGI,"• YP | 4.2k | 14.31mio | Avg: 34 | Mix
+• XC | 2.0k | 6.86mio | Avg: 34 | Retail",• XL | 9.4k | 31.84mio | Avg: 34 | Retail,-3139,"Buyer: Mix 68%, Seller: Retail 100%"
+POLA,"• XA | 18.0k | 124.23mio | Avg: 69 | Bandar
+• OD | 6.0k | 45.41mio | Avg: 76 | Bandar
+• MG | 4.7k | 32.97mio | Avg: 70 | Mix
+• CP | 2.0k | 15.20mio | Avg: 76 | Mix
+• YB | 750 | 5.70mio | Avg: 76 | Retail","• XL | 17.9k | 125.36mio | Avg: 70 | Retail
+• YP | 10.1k | 74.38mio | Avg: 74 | Mix
+• IU | 3.5k | 24.00mio | Avg: 69 | Bandar",1,"Buyer: Bandar 76%, Seller: Retail 57%"
+JAYA,"• AZ | 7.9k | 80.65mio | Avg: 102 | Retail
+• IU | 7.1k | 73.38mio | Avg: 104 | Bandar
+• YP | 4.0k | 41.77mio | Avg: 105 | Mix
+• ZP | 4.0k | 41.46mio | Avg: 104 | Bandar
+• EP | 1.3k | 13.51mio | Avg: 104 | Mix","• XL | 15.8k | 166.37mio | Avg: 105 | Retail
+• XC | 3.3k | 34.29mio | Avg: 104 | Retail
+• NI | 2.4k | 25.60mio | Avg: 105 | Bandar
+• TP | 1.4k | 15.13mio | Avg: 107 | Bandar
+• XA | 983 | 10.62mio | Avg: 108 | Bandar",250,"Buyer: Bandar 46%, Seller: Retail 80%"
+JAST,"• AI | 83.7k | 853.42mio | Avg: 102 | Bandar
+• YP | 29.8k | 303.69mio | Avg: 102 | Mix
+• DR | 23.7k | 237.38mio | Avg: 100 | Retail
+• XC | 11.8k | 123.44mio | Avg: 105 | Retail
+• YJ | 7.7k | 76.24mio | Avg: 99 | Retail","• XL | 125.0k | 1.26bio | Avg: 101 | Retail
+• PD | 10.3k | 104.17mio | Avg: 101 | Mix
+• NI | 8.5k | 87.29mio | Avg: 103 | Bandar
+• CC | 6.9k | 70.10mio | Avg: 102 | Mix
+• AZ | 5.9k | 58.68mio | Avg: 99 | Retail",96,"Buyer: Bandar 53%, Seller: Retail 84%"
+PAMG,"• PD | 43.0k | 258.22mio | Avg: 60 | Mix
+• DX | 16.1k | 101.58mio | Avg: 63 | Bandar
+• EP | 16.0k | 100.96mio | Avg: 63 | Mix
+• KK | 10.5k | 67.12mio | Avg: 64 | Bandar
+• SQ | 6.1k | 38.35mio | Avg: 63 | Bandar","• XL | 58.9k | 364.97mio | Avg: 62 | Retail
+• YB | 14.9k | 89.32mio | Avg: 60 | Retail
+• YP | 12.5k | 79.03mio | Avg: 63 | Mix
+• XA | 10.0k | 62.29mio | Avg: 62 | Bandar
+• HP | 2.8k | 17.60mio | Avg: 63 | Bandar",-7379,"Buyer: Mix 64%, Seller: Retail 74%"
+INOV,"• YU | 10.5k | 130.93mio | Avg: 125 | Bandar
+• AK | 7.1k | 95.88mio | Avg: 135 | Bandar
+• BK | 5.1k | 65.35mio | Avg: 129 | Bandar
+• TP | 2.9k | 38.08mio | Avg: 132 | Bandar
+• YB | 15 | 202.50k | Avg: 135 | Retail","• XL | 12.1k | 154.25mio | Avg: 128 | Retail
+• PD | 2.8k | 36.28mio | Avg: 130 | Mix
+• XC | 2.0k | 25.00mio | Avg: 128 | Retail
+• OD | 1.6k | 22.23mio | Avg: 138 | Bandar
+• XA | 774 | 9.91mio | Avg: 128 | Bandar",6362,"Buyer: Bandar 100%, Seller: Retail 73%"
+SMKL,"• XC | 4.2k | 73.46mio | Avg: 173 | Retail
+• PG | 500 | 8.55mio | Avg: 171 | Mix","• OD | 2.0k | 34.80mio | Avg: 174 | Bandar
+• CC | 480 | 8.45mio | Avg: 176 | Mix",2266,"Buyer: Retail 89%, Seller: Bandar 81%"
+HDIT,"• CC | 29.6k | 186.27mio | Avg: 63 | Mix
+• PD | 28.0k | 173.31mio | Avg: 62 | Mix
+• AK | 12.5k | 78.54mio | Avg: 63 | Bandar
+• MG | 11.8k | 74.64mio | Avg: 63 | Mix
+• BQ | 10.6k | 66.98mio | Avg: 63 | Bandar","• XL | 48.7k | 306.65mio | Avg: 63 | Retail
+• YB | 40.5k | 250.93mio | Avg: 62 | Retail
+• XC | 15.9k | 98.53mio | Avg: 62 | Retail
+• AT | 4.0k | 26.39mio | Avg: 66 | Bandar
+• AZ | 3.2k | 20.48mio | Avg: 64 | Retail",-19774,"Buyer: Mix 75%, Seller: Retail 96%"
+KEEN,"• AK | 7.1k | 692.68mio | Avg: 981 | Bandar
+• CC | 6.8k | 661.34mio | Avg: 975 | Mix
+• LG | 4.0k | 401.97mio | Avg: 1.012 | Bandar
+• XA | 2.8k | 287.56mio | Avg: 1.040 | Bandar
+• TP | 2.2k | 230.70mio | Avg: 1.029 | Bandar","• XL | 14.3k | 1.40bio | Avg: 981 | Retail
+• ZP | 5.2k | 504.36mio | Avg: 969 | Bandar
+• AZ | 3.7k | 363.26mio | Avg: 981 | Retail
+• YP | 1.8k | 178.12mio | Avg: 976 | Mix
+• YB | 1.2k | 123.26mio | Avg: 1.017 | Retail",-3417,"Buyer: Bandar 70%, Seller: Retail 73%"
+WOWS,"• GR | 40.2k | 309.69mio | Avg: 77 | Bandar
+• CC | 30.3k | 233.66mio | Avg: 77 | Mix
+• SQ | 19.4k | 151.64mio | Avg: 78 | Bandar
+• XC | 17.7k | 140.05mio | Avg: 79 | Retail
+• DH | 15.5k | 130.47mio | Avg: 84 | Bandar","• YB | 90.4k | 678.21mio | Avg: 75 | Retail
+• PD | 17.1k | 130.21mio | Avg: 76 | Mix
+• XL | 14.5k | 113.00mio | Avg: 78 | Retail
+• AZ | 10.6k | 80.26mio | Avg: 76 | Retail
+• AI | 9.0k | 72.00mio | Avg: 80 | Bandar",-18343,"Buyer: Bandar 61%, Seller: Retail 82%"
+REAL,"• BR | 360.1k | 2.63bio | Avg: 73 | Bandar
+• YP | 111.7k | 781.82mio | Avg: 70 | Mix
+• AK | 112.8k | 733.01mio | Avg: 65 | Bandar
+• XC | 59.9k | 407.45mio | Avg: 68 | Retail
+• AZ | 15.8k | 110.89mio | Avg: 70 | Retail","• CC | 133.6k | 935.14mio | Avg: 70 | Mix
+• KK | 125.3k | 877.41mio | Avg: 70 | Bandar
+• BK | 115.9k | 834.36mio | Avg: 72 | Bandar
+• ZP | 87.0k | 591.67mio | Avg: 68 | Bandar
+• YB | 66.0k | 422.22mio | Avg: 64 | Retail",132532,"Buyer: Bandar 72%, Seller: Bandar 62%"
+PMJS,"• KK | 3.7k | 40.39mio | Avg: 110 | Bandar
+• AN | 811 | 8.76mio | Avg: 108 | Bandar",• YP | 3.5k | 38.84mio | Avg: 110 | Mix,952,"Buyer: Bandar 100%, Seller: Mix 100%"
+CSRA,"• ZP | 5.9k | 535.07mio | Avg: 912 | Bandar
+• YP | 2.5k | 233.03mio | Avg: 916 | Mix
+• CC | 1.9k | 175.23mio | Avg: 916 | Mix
+• AZ | 574 | 52.98mio | Avg: 923 | Retail
+• PD | 467 | 42.45mio | Avg: 909 | Mix","• XL | 3.2k | 290.44mio | Avg: 920 | Retail
+• DH | 2.4k | 219.36mio | Avg: 914 | Bandar
+• TP | 1.5k | 140.55mio | Avg: 918 | Bandar
+• XC | 1.2k | 106.82mio | Avg: 906 | Retail
+• AR | 1.0k | 90.00mio | Avg: 900 | Bandar",2098,"Buyer: Bandar 52%, Seller: Bandar 53%"
+INDO,"• XL | 86.4k | 3.23bio | Avg: 374 | Retail
+• XA | 40.1k | 1.50bio | Avg: 374 | Bandar
+• CP | 35.0k | 1.31bio | Avg: 374 | Mix
+• AG | 28.0k | 1.05bio | Avg: 374 | Bandar
+• YP | 27.5k | 1.03bio | Avg: 374 | Mix","• EP | 114.5k | 4.28bio | Avg: 374 | Mix
+• MG | 85.4k | 3.19bio | Avg: 374 | Mix
+• IU | 55.6k | 2.08bio | Avg: 374 | Bandar
+• PC | 46.1k | 1.73bio | Avg: 374 | Bandar
+• AZ | 44.1k | 1.65bio | Avg: 374 | Retail",-128615,"Buyer: Retail 40%, Seller: Mix 58%"
+DMND,"• XL | 1.1k | 77.80mio | Avg: 736 | Retail
+• CC | 285 | 20.78mio | Avg: 729 | Mix
+• XC | 146 | 10.19mio | Avg: 698 | Retail
+• ES | 100 | 6.80mio | Avg: 680 | Mix","• YP | 645 | 45.86mio | Avg: 711 | Mix
+• SQ | 617 | 43.19mio | Avg: 700 | Bandar
+• TP | 255 | 19.64mio | Avg: 770 | Bandar",71,"Buyer: Retail 76%, Seller: Bandar 57%"
+CASH,"• PD | 36.0k | 518.40mio | Avg: 144 | Mix
+• KK | 3.1k | 48.87mio | Avg: 157 | Bandar
+• SQ | 2.1k | 29.56mio | Avg: 144 | Bandar
+• BB | 1.1k | 15.19mio | Avg: 141 | Mix","• XL | 16.0k | 236.71mio | Avg: 148 | Retail
+• CC | 11.3k | 164.45mio | Avg: 146 | Mix
+• XC | 6.7k | 97.03mio | Avg: 144 | Retail
+• YP | 5.3k | 77.57mio | Avg: 147 | Mix
+• YB | 2.4k | 33.22mio | Avg: 140 | Retail",597,"Buyer: Mix 88%, Seller: Retail 60%"
+PLAN,"• AG | 32.4k | 311.18mio | Avg: 96 | Bandar
+• AI | 13.5k | 129.67mio | Avg: 96 | Bandar
+• XL | 9.8k | 93.76mio | Avg: 96 | Retail
+• AZ | 6.0k | 57.40mio | Avg: 96 | Retail
+• XC | 5.3k | 51.04mio | Avg: 96 | Retail","• HD | 67.3k | 646.01mio | Avg: 96 | Bandar
+• MG | 8.1k | 78.11mio | Avg: 96 | Mix
+• DR | 2.3k | 22.19mio | Avg: 96 | Retail
+• YU | 116 | 1.16mio | Avg: 100 | Bandar
+• SF | 100 | 960.00k | Avg: 96 | Bandar",-10971,"Buyer: Bandar 69%, Seller: Bandar 87%"
+ATAP,"• DH | 6.1k | 498.78mio | Avg: 815 | Bandar
+• AG | 5.0k | 407.50mio | Avg: 815 | Bandar
+• YB | 3.6k | 297.48mio | Avg: 815 | Retail
+• YP | 3.5k | 287.53mio | Avg: 815 | Mix
+• MG | 3.5k | 281.66mio | Avg: 815 | Mix","• HD | 7.4k | 605.87mio | Avg: 815 | Bandar
+• CP | 4.4k | 356.81mio | Avg: 815 | Mix
+• XL | 3.9k | 315.08mio | Avg: 815 | Retail
+• OD | 3.1k | 255.99mio | Avg: 815 | Bandar
+• XC | 2.9k | 239.28mio | Avg: 815 | Retail",-1,"Buyer: Bandar 51%, Seller: Bandar 49%"
+HOPE,"• XL | 73.2k | 2.01bio | Avg: 275 | Retail
+• XA | 35.1k | 852.57mio | Avg: 243 | Bandar
+• CC | 21.8k | 558.67mio | Avg: 256 | Mix
+• CP | 20.8k | 510.53mio | Avg: 245 | Mix
+• XC | 17.0k | 486.60mio | Avg: 286 | Retail","• YB | 35.5k | 863.69mio | Avg: 243 | Retail
+• TP | 28.9k | 710.84mio | Avg: 246 | Bandar
+• GR | 23.7k | 581.43mio | Avg: 245 | Bandar
+• AT | 18.8k | 545.52mio | Avg: 290 | Bandar
+• KK | 18.4k | 448.50mio | Avg: 244 | Bandar",42588,"Buyer: Retail 54%, Seller: Bandar 72%"
+MGLV,"• SA | 2.8k | 624.21mio | Avg: 2.260 | Bandar
+• AI | 500 | 117.40mio | Avg: 2.348 | Bandar
+• XC | 492 | 111.63mio | Avg: 2.269 | Retail
+• XL | 403 | 95.87mio | Avg: 2.379 | Retail
+• MG | 337 | 76.80mio | Avg: 2.279 | Mix","• LG | 3.2k | 729.20mio | Avg: 2.266 | Bandar
+• HD | 1.2k | 286.98mio | Avg: 2.320 | Bandar
+• KK | 258 | 63.42mio | Avg: 2.458 | Bandar
+• FZ | 50 | 12.75mio | Avg: 2.550 | Bandar
+• AK | 51 | 12.57mio | Avg: 2.465 | Bandar",-320,"Buyer: Bandar 73%, Seller: Bandar 100%"
+UVCR,"• CP | 76.3k | 1.17bio | Avg: 153 | Mix
+• AK | 23.9k | 367.57mio | Avg: 154 | Bandar
+• DH | 20.0k | 285.96mio | Avg: 143 | Bandar
+• BK | 8.7k | 134.34mio | Avg: 155 | Bandar
+• DR | 8.6k | 125.31mio | Avg: 145 | Retail","• XL | 48.8k | 746.99mio | Avg: 153 | Retail
+• YP | 47.9k | 699.72mio | Avg: 146 | Mix
+• TP | 10.8k | 180.26mio | Avg: 167 | Bandar
+• BQ | 9.8k | 154.62mio | Avg: 158 | Bandar
+• OD | 10.1k | 144.74mio | Avg: 143 | Bandar",10028,"Buyer: Mix 56%, Seller: Retail 38%"
+CMNT,"• KI | 17.6k | 1.38bio | Avg: 780 | Bandar
+• ZP | 3.5k | 274.46mio | Avg: 793 | Bandar
+• AZ | 2.1k | 165.47mio | Avg: 794 | Retail
+• YJ | 1.1k | 90.85mio | Avg: 790 | Retail
+• GA | 1.0k | 80.00mio | Avg: 800 | Bandar","• AK | 5.7k | 457.91mio | Avg: 799 | Bandar
+• YP | 5.0k | 389.83mio | Avg: 782 | Mix
+• HD | 3.3k | 260.70mio | Avg: 790 | Bandar
+• IF | 2.6k | 207.40mio | Avg: 798 | Mix
+• CC | 2.3k | 188.07mio | Avg: 817 | Mix",6413,"Buyer: Bandar 87%, Seller: Mix 52%"
+KUAS,"• YP | 135.3k | 1.37bio | Avg: 101 | Mix
+• CC | 21.7k | 225.71mio | Avg: 104 | Mix
+• AK | 15.7k | 158.76mio | Avg: 101 | Bandar
+• GR | 2.5k | 24.93mio | Avg: 99 | Bandar
+• AD | 15 | 153.00k | Avg: 102 | Retail","• SS | 60.0k | 612.00mio | Avg: 102 | Bandar
+• NI | 23.2k | 233.96mio | Avg: 101 | Bandar
+• XL | 13.9k | 141.83mio | Avg: 102 | Retail
+• PD | 13.2k | 137.61mio | Avg: 104 | Mix
+• XC | 11.6k | 119.66mio | Avg: 103 | Retail",53298,"Buyer: Mix 90%, Seller: Bandar 68%"
+TAYS,"• CC | 15.4k | 116.71mio | Avg: 76 | Mix
+• PD | 9.4k | 71.42mio | Avg: 76 | Mix
+• YP | 9.4k | 70.78mio | Avg: 75 | Mix
+• KK | 9.4k | 68.03mio | Avg: 72 | Bandar
+• EP | 3.8k | 27.70mio | Avg: 73 | Mix","• CP | 26.3k | 200.12mio | Avg: 76 | Mix
+• XL | 15.1k | 113.40mio | Avg: 75 | Retail
+• YB | 14.8k | 106.41mio | Avg: 72 | Retail
+• HP | 2.8k | 20.66mio | Avg: 73 | Bandar
+• AZ | 1.3k | 9.75mio | Avg: 76 | Retail",-12910,"Buyer: Mix 80%, Seller: Retail 52%"
+RMKE,"• XL | 2.8k | 1.64bio | Avg: 5.925 | Retail
+• CC | 1.6k | 919.56mio | Avg: 5.925 | Mix
+• YP | 1.4k | 827.13mio | Avg: 5.925 | Mix
+• AI | 1.3k | 770.25mio | Avg: 5.925 | Bandar
+• XC | 1.2k | 735.29mio | Avg: 5.925 | Retail","• TP | 6.0k | 3.55bio | Avg: 5.925 | Bandar
+• IU | 5.6k | 3.30bio | Avg: 5.925 | Bandar
+• SS | 1.2k | 739.44mio | Avg: 5.925 | Bandar
+• OD | 870 | 515.48mio | Avg: 5.925 | Bandar
+• CP | 417 | 247.07mio | Avg: 5.925 | Mix",-5836,"Buyer: Retail 49%, Seller: Bandar 97%"
+NASI,"• ZP | 104.2k | 1.27bio | Avg: 122 | Bandar
+• XA | 92.7k | 1.16bio | Avg: 125 | Bandar
+• AN | 90.0k | 1.12bio | Avg: 124 | Bandar
+• AZ | 16.0k | 204.17mio | Avg: 128 | Retail
+• YP | 11.8k | 152.35mio | Avg: 129 | Mix","• BQ | 146.0k | 1.83bio | Avg: 125 | Bandar
+• XL | 69.1k | 863.70mio | Avg: 125 | Retail
+• YB | 53.0k | 673.38mio | Avg: 127 | Retail
+• CC | 18.2k | 227.69mio | Avg: 125 | Mix
+• IU | 14.5k | 178.25mio | Avg: 123 | Bandar",13774,"Buyer: Bandar 91%, Seller: Bandar 53%"
+BSML,"• FS | 87.3k | 2.30bio | Avg: 263 | Bandar
+• ZP | 62.3k | 1.64bio | Avg: 263 | Bandar
+• HD | 42.0k | 1.09bio | Avg: 260 | Bandar
+• AZ | 6.7k | 180.15mio | Avg: 269 | Retail
+• IN | 300 | 7.47mio | Avg: 249 | Bandar","• BR | 40.0k | 1.05bio | Avg: 262 | Bandar
+• PD | 31.3k | 810.98mio | Avg: 259 | Mix
+• CP | 26.7k | 713.88mio | Avg: 267 | Mix
+• AK | 18.7k | 493.55mio | Avg: 264 | Bandar
+• YB | 16.0k | 410.70mio | Avg: 256 | Retail",65820,"Buyer: Bandar 97%, Seller: Bandar 44%"
+CHEM,"• EP | 33.4k | 290.79mio | Avg: 87 | Mix
+• BK | 4.0k | 35.60mio | Avg: 90 | Bandar
+• DR | 3.4k | 30.89mio | Avg: 91 | Retail
+• XC | 3.2k | 28.40mio | Avg: 90 | Retail
+• MG | 2.5k | 22.50mio | Avg: 90 | Mix","• YB | 19.8k | 168.46mio | Avg: 85 | Retail
+• XL | 15.6k | 138.49mio | Avg: 89 | Retail
+• YP | 6.9k | 61.34mio | Avg: 89 | Mix
+• PD | 5.4k | 47.53mio | Avg: 88 | Mix
+• DX | 1.6k | 14.29mio | Avg: 89 | Bandar",-2848,"Buyer: Mix 77%, Seller: Retail 72%"
+RAFI,"• BQ | 8.0k | 32.80mio | Avg: 41 | Bandar
+• XL | 3.4k | 13.98mio | Avg: 41 | Retail
+• PD | 611 | 2.51mio | Avg: 41 | Mix","• OD | 7.1k | 28.97mio | Avg: 41 | Bandar
+• IU | 6.9k | 28.18mio | Avg: 41 | Bandar
+• CC | 511 | 2.10mio | Avg: 41 | Mix",-2431,"Buyer: Bandar 67%, Seller: Bandar 96%"
+ELPI,"• YP | 5.7k | 582.80mio | Avg: 1.018 | Mix
+• KK | 4.8k | 487.45mio | Avg: 1.017 | Bandar
+• CP | 3.1k | 328.76mio | Avg: 1.045 | Mix
+• ZP | 2.7k | 270.64mio | Avg: 995 | Bandar
+• AK | 1.9k | 207.49mio | Avg: 1.069 | Bandar","• GR | 5.2k | 527.56mio | Avg: 1.024 | Bandar
+• YB | 4.3k | 437.99mio | Avg: 1.020 | Retail
+• XL | 2.7k | 274.75mio | Avg: 1.021 | Retail
+• NI | 1.9k | 206.51mio | Avg: 1.070 | Bandar
+• CC | 1.1k | 120.29mio | Avg: 1.046 | Mix",3108,"Buyer: Bandar 52%, Seller: Bandar 47%"
+EURO,"• SQ | 4.0k | 269.27mio | Avg: 673 | Bandar
+• ID | 2.1k | 123.38mio | Avg: 582 | Bandar
+• BR | 1.7k | 110.55mio | Avg: 660 | Bandar
+• PD | 1.6k | 99.13mio | Avg: 627 | Mix
+• XL | 1.3k | 84.52mio | Avg: 627 | Retail","• OD | 8.3k | 479.23mio | Avg: 576 | Bandar
+• MU | 1.5k | 101.23mio | Avg: 674 | Bandar
+• AT | 1.0k | 66.46mio | Avg: 639 | Bandar
+• PG | 1.0k | 60.00mio | Avg: 600 | Mix
+• YB | 872 | 51.01mio | Avg: 585 | Retail",-2009,"Buyer: Bandar 73%, Seller: Bandar 85%"
+TOOL,"• MG | 39.2k | 235.19mio | Avg: 60 | Mix
+• YP | 27.8k | 169.49mio | Avg: 61 | Mix
+• EP | 8.6k | 54.21mio | Avg: 63 | Mix
+• DR | 2.5k | 15.48mio | Avg: 62 | Retail
+• LG | 1.4k | 8.57mio | Avg: 61 | Bandar","• CP | 28.2k | 172.07mio | Avg: 61 | Mix
+• XL | 12.0k | 73.18mio | Avg: 61 | Retail
+• PD | 10.4k | 65.64mio | Avg: 63 | Mix
+• YB | 10.1k | 60.55mio | Avg: 60 | Retail
+• SQ | 7.3k | 43.57mio | Avg: 60 | Bandar",11514,"Buyer: Mix 95%, Seller: Mix 57%"
+OMED,"• GR | 13.5k | 262.04mio | Avg: 194 | Bandar
+• XL | 7.7k | 156.05mio | Avg: 203 | Retail
+• IF | 6.3k | 125.87mio | Avg: 199 | Mix
+• YB | 2.8k | 57.92mio | Avg: 207 | Retail
+• YJ | 2.5k | 50.50mio | Avg: 202 | Retail","• KK | 15.7k | 311.34mio | Avg: 198 | Bandar
+• CC | 15.3k | 309.98mio | Avg: 203 | Mix
+• XC | 6.5k | 129.02mio | Avg: 198 | Retail
+• EP | 2.3k | 45.00mio | Avg: 192 | Mix
+• NI | 1.7k | 33.71mio | Avg: 202 | Bandar",-8706,"Buyer: Bandar 41%, Seller: Mix 42%"
+KDTN,"• ZP | 5.1k | 583.72mio | Avg: 1.152 | Bandar
+• BQ | 3.6k | 395.81mio | Avg: 1.088 | Bandar
+• CC | 1.8k | 208.99mio | Avg: 1.142 | Mix
+• AK | 1.7k | 207.05mio | Avg: 1.192 | Bandar
+• AT | 1.3k | 160.40mio | Avg: 1.272 | Bandar","• XL | 4.9k | 559.93mio | Avg: 1.150 | Retail
+• PD | 2.8k | 308.12mio | Avg: 1.088 | Mix
+• LG | 1.5k | 181.53mio | Avg: 1.203 | Bandar
+• GR | 1.2k | 157.34mio | Avg: 1.274 | Bandar
+• IF | 1.2k | 155.68mio | Avg: 1.275 | Mix",1867,"Buyer: Bandar 86%, Seller: Retail 42%"
+ELIT,"• XL | 207.5k | 6.08bio | Avg: 293 | Retail
+• BR | 16.4k | 395.87mio | Avg: 241 | Bandar
+• PD | 6.6k | 217.37mio | Avg: 328 | Mix
+• DR | 2.6k | 75.95mio | Avg: 296 | Retail
+• BQ | 2.1k | 67.97mio | Avg: 320 | Bandar","• CC | 84.6k | 2.57bio | Avg: 304 | Mix
+• AK | 31.4k | 937.81mio | Avg: 299 | Bandar
+• YP | 22.7k | 675.23mio | Avg: 297 | Mix
+• LG | 19.9k | 475.68mio | Avg: 239 | Bandar
+• DH | 13.0k | 390.02mio | Avg: 299 | Bandar",63599,"Buyer: Retail 89%, Seller: Mix 63%"
+TRON,"• CC | 37.7k | 701.55mio | Avg: 186 | Mix
+• BK | 14.9k | 277.87mio | Avg: 186 | Bandar
+• AO | 9.1k | 175.98mio | Avg: 194 | Bandar
+• AK | 8.9k | 168.02mio | Avg: 188 | Bandar
+• KK | 7.8k | 139.82mio | Avg: 180 | Bandar","• XA | 14.3k | 256.42mio | Avg: 179 | Bandar
+• CP | 13.4k | 244.54mio | Avg: 183 | Mix
+• EP | 9.7k | 173.59mio | Avg: 179 | Mix
+• IF | 7.2k | 133.75mio | Avg: 185 | Mix
+• AZ | 5.5k | 106.70mio | Avg: 195 | Retail",28345,"Buyer: Bandar 52%, Seller: Mix 60%"
+NSSS,"• XL | 5.8k | 964.80mio | Avg: 1.675 | Retail
+• ZP | 2.0k | 335.00mio | Avg: 1.675 | Bandar
+• AK | 1.5k | 245.56mio | Avg: 1.675 | Bandar
+• CC | 1.3k | 225.79mio | Avg: 1.675 | Mix
+• CP | 975 | 163.31mio | Avg: 1.675 | Mix","• DP | 3.6k | 605.01mio | Avg: 1.675 | Bandar
+• IF | 2.9k | 492.79mio | Avg: 1.675 | Mix
+• YP | 2.8k | 469.00mio | Avg: 1.675 | Mix
+• XC | 1.4k | 237.01mio | Avg: 1.675 | Retail
+• LG | 1.3k | 210.21mio | Avg: 1.675 | Bandar",-475,"Buyer: Retail 50%, Seller: Mix 48%"
+CYBR,"• CC | 5.6k | 910.86mio | Avg: 1.613 | Mix
+• YP | 2.3k | 388.94mio | Avg: 1.660 | Mix
+• IF | 2.0k | 320.00mio | Avg: 1.600 | Mix
+• SH | 1.2k | 202.68mio | Avg: 1.689 | Bandar
+• AK | 415 | 67.64mio | Avg: 1.630 | Bandar","• PD | 4.0k | 646.33mio | Avg: 1.611 | Mix
+• XA | 2.4k | 376.83mio | Avg: 1.586 | Bandar
+• BK | 1.7k | 288.81mio | Avg: 1.685 | Bandar
+• YU | 1.5k | 251.35mio | Avg: 1.658 | Bandar
+• SQ | 880 | 142.12mio | Avg: 1.615 | Bandar",1107,"Buyer: Mix 86%, Seller: Bandar 62%"
+AYAM,"• XL | 53.6k | 2.24bio | Avg: 418 | Retail
+• XA | 34.7k | 1.43bio | Avg: 413 | Bandar
+• PD | 24.6k | 970.38mio | Avg: 394 | Mix
+• ZP | 12.8k | 512.60mio | Avg: 399 | Bandar
+• TP | 10.3k | 434.45mio | Avg: 422 | Bandar","• GA | 30.0k | 1.20bio | Avg: 400 | Bandar
+• YB | 26.7k | 1.01bio | Avg: 377 | Retail
+• PC | 17.6k | 747.51mio | Avg: 424 | Bandar
+• CP | 15.3k | 633.30mio | Avg: 414 | Mix
+• YP | 10.3k | 406.73mio | Avg: 395 | Mix",36198,"Buyer: Bandar 42%, Seller: Bandar 48%"
+ASLI,"• AO | 24.7k | 1.27bio | Avg: 515 | Bandar
+• AK | 24.1k | 1.13bio | Avg: 467 | Bandar
+• MG | 18.3k | 933.29mio | Avg: 511 | Mix
+• BK | 8.9k | 398.81mio | Avg: 447 | Bandar
+• DR | 4.9k | 221.70mio | Avg: 453 | Retail","• XL | 22.6k | 1.08bio | Avg: 479 | Retail
+• CC | 9.9k | 519.91mio | Avg: 523 | Mix
+• ZP | 10.5k | 515.97mio | Avg: 490 | Bandar
+• NI | 10.4k | 479.88mio | Avg: 462 | Bandar
+• LG | 6.5k | 354.25mio | Avg: 541 | Bandar",20842,"Buyer: Bandar 71%, Seller: Bandar 46%"
+SMGA,"• LG | 94.0k | 967.80mio | Avg: 103 | Bandar
+• CC | 85.0k | 900.65mio | Avg: 106 | Mix
+• BK | 37.4k | 389.12mio | Avg: 104 | Bandar
+• YP | 34.0k | 357.48mio | Avg: 105 | Mix
+• AK | 30.6k | 318.04mio | Avg: 104 | Bandar","• CP | 77.9k | 809.94mio | Avg: 104 | Mix
+• PD | 53.1k | 546.48mio | Avg: 103 | Mix
+• YU | 44.4k | 475.60mio | Avg: 107 | Bandar
+• XL | 35.4k | 367.90mio | Avg: 104 | Retail
+• PO | 24.8k | 262.85mio | Avg: 106 | Bandar",45414,"Buyer: Bandar 58%, Seller: Mix 56%"
+MHKI,"• AK | 62.0k | 1.31bio | Avg: 211 | Bandar
+• KK | 18.6k | 398.49mio | Avg: 214 | Bandar
+• TP | 9.2k | 187.13mio | Avg: 204 | Bandar
+• YB | 8.7k | 174.02mio | Avg: 200 | Retail
+• GR | 7.6k | 157.62mio | Avg: 208 | Bandar","• YP | 19.7k | 416.88mio | Avg: 212 | Mix
+• CC | 18.9k | 406.69mio | Avg: 215 | Mix
+• XL | 19.0k | 404.66mio | Avg: 213 | Retail
+• PD | 17.0k | 364.58mio | Avg: 215 | Mix
+• AZ | 9.5k | 197.11mio | Avg: 207 | Retail",22062,"Buyer: Bandar 92%, Seller: Mix 66%"
+YOII,"• XL | 43.7k | 441.24mio | Avg: 101 | Retail
+• CC | 29.0k | 283.96mio | Avg: 98 | Mix
+• AZ | 23.5k | 230.74mio | Avg: 98 | Retail
+• YP | 22.9k | 224.16mio | Avg: 98 | Mix
+• YB | 10.7k | 103.57mio | Avg: 97 | Retail","• MG | 125.6k | 1.24bio | Avg: 99 | Mix
+• PD | 9.4k | 96.38mio | Avg: 102 | Mix
+• GR | 7.5k | 70.39mio | Avg: 94 | Bandar
+• DH | 5.0k | 48.59mio | Avg: 97 | Bandar
+• CP | 3.8k | 39.61mio | Avg: 104 | Mix",-21613,"Buyer: Retail 60%, Seller: Mix 92%"
+AMAN,"• ZP | 11.8k | 227.05mio | Avg: 193 | Bandar
+• BQ | 3.6k | 70.06mio | Avg: 193 | Bandar
+• XC | 2.3k | 47.52mio | Avg: 210 | Retail
+• DR | 1.9k | 41.43mio | Avg: 214 | Retail
+• AK | 1.8k | 35.83mio | Avg: 196 | Bandar","• CC | 7.1k | 148.08mio | Avg: 209 | Mix
+• XL | 5.9k | 119.93mio | Avg: 203 | Retail
+• TP | 3.0k | 68.30mio | Avg: 224 | Bandar
+• NI | 3.4k | 68.22mio | Avg: 200 | Bandar
+• KK | 2.9k | 61.45mio | Avg: 213 | Bandar",-917,"Buyer: Bandar 80%, Seller: Bandar 42%"
+NCKL,"• DX | 152.9k | 19.85bio | Avg: 1.298 | Bandar
+• DR | 108.4k | 14.35bio | Avg: 1.324 | Retail
+• MG | 61.9k | 8.07bio | Avg: 1.304 | Mix
+• YU | 35.0k | 4.66bio | Avg: 1.331 | Bandar
+• IF | 32.5k | 4.46bio | Avg: 1.370 | Mix","• AK | 151.4k | 19.98bio | Avg: 1.320 | Bandar
+• XL | 81.2k | 10.56bio | Avg: 1.300 | Retail
+• AZ | 62.3k | 8.38bio | Avg: 1.345 | Retail
+• BK | 60.6k | 8.19bio | Avg: 1.351 | Bandar
+• ZP | 52.9k | 6.99bio | Avg: 1.322 | Bandar",-17692,"Buyer: Bandar 48%, Seller: Bandar 65%"
+ADMG,"• KK | 3.6k | 77.21mio | Avg: 213 | Bandar
+• AZ | 1.2k | 24.77mio | Avg: 202 | Retail
+• CP | 800 | 16.00mio | Avg: 200 | Mix
+• PD | 695 | 13.97mio | Avg: 201 | Mix
+• YB | 46 | 915.40k | Avg: 199 | Retail","• XL | 3.2k | 67.17mio | Avg: 209 | Retail
+• YP | 2.1k | 44.25mio | Avg: 211 | Mix
+• EP | 1.4k | 28.23mio | Avg: 207 | Mix
+• CC | 526 | 10.99mio | Avg: 209 | Mix",-809,"Buyer: Bandar 57%, Seller: Mix 55%"
+ADRO,"• AK | 113.8k | 23.81bio | Avg: 2.092 | Bandar
+• BK | 113.7k | 23.63bio | Avg: 2.078 | Bandar
+• HD | 45.7k | 9.22bio | Avg: 2.016 | Bandar
+• XL | 43.4k | 9.13bio | Avg: 2.103 | Retail
+• DX | 29.0k | 6.37bio | Avg: 2.201 | Bandar","• CC | 126.3k | 26.83bio | Avg: 2.125 | Mix
+• GR | 42.9k | 8.82bio | Avg: 2.055 | Bandar
+• AZ | 34.8k | 7.33bio | Avg: 2.104 | Retail
+• PD | 32.8k | 6.69bio | Avg: 2.041 | Mix
+• AI | 30.1k | 6.34bio | Avg: 2.105 | Bandar",78786,"Buyer: Bandar 87%, Seller: Mix 60%"
+AIMS,"• CC | 5.3k | 271.37mio | Avg: 510 | Mix
+• XL | 1.7k | 88.84mio | Avg: 510 | Retail
+• ZP | 784 | 39.98mio | Avg: 510 | Bandar
+• YP | 398 | 20.30mio | Avg: 510 | Mix
+• PD | 33 | 1.68mio | Avg: 510 | Mix","• MG | 5.4k | 272.95mio | Avg: 510 | Mix
+• IU | 3.5k | 181.00mio | Avg: 510 | Bandar",-623,"Buyer: Mix 69%, Seller: Mix 60%"
