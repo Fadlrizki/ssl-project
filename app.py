@@ -50,6 +50,16 @@ st.caption("Daily trend • Minor phase • Volume behavior • Risk Management"
 # UPDATED HELPERS (using new modules)
 # ======================================================
 
+def color_decision(val):
+    """Color code based on decision"""
+    if val == "ENTRY_READY":
+        return "background-color: #d4edda; color: #155724;"
+    elif val == "SETUP_PENDING":
+        return "background-color: #fff3cd; color: #856404;"
+    elif val == "WAIT":
+        return "background-color: #f8d7da; color: #721c24;"
+    return ""
+
 def clear_cache():
     """Clear all cache files"""
     cache_files = [
