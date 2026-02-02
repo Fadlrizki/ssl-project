@@ -749,13 +749,27 @@ def save_trigger_cache(df, trade_date=None):
     st.info(f"✅ Cache saved → {path}")
 
 def load_broker_summary(trade_date, max_back=7):
+    """Load broker summary CSV file"""
     dt = datetime.strptime(trade_date, "%Y-%m-%d")
     for i in range(max_back + 1):
         check_date = (dt - timedelta(days=i)).strftime("%Y-%m-%d")
         path = f"broksum/broker_summary-{check_date}.csv"
+        
         if os.path.exists(path):
-            df = pd.read_csv(path)
-            return df, check_date
+            try:
+                df = pd.read_csv(path)
+                if not df.empty:
+                    # Cek kolom yang ada
+                    st.info(f"Loaded broker summary from {check_date}")
+                    st.write(f"File: {path}")
+                    st.write(f"Columns: {df.columns.tolist()}")
+                    st.write(f"Rows: {len(df)}")
+                    return df, check_date
+            except Exception as e:
+                st.error(f"Error loading {path}: {e}")
+                continue
+    
+    st.warning(f"Tidak ditemukan broker summary file untuk tanggal {trade_date} (mundur {max_back} hari)")
     return None, None
 
 def load_trigger_cache_pickle(trade_date, max_back=7):
@@ -1351,40 +1365,80 @@ df_broker, broker_used_date = load_broker_summary(TRADE_DATE)
 
 if df_broker is not None and not df_broker.empty:
     if show_status("Broker summary", TRADE_DATE, broker_used_date, df_broker):
+        # Cek jika df_trigger tidak kosong
         if df_trigger is not None and not df_trigger.empty:
-            df_final = df_trigger.merge(
-                df_broker,
-                left_on="Kode",
-                right_on="stock",
-                how="left"
-            )
-            
-            if not df_final.empty:
-                st.subheader("📊 Trigger + Broker Summary")
+            # Pastikan kolom 'Kode' ada di df_trigger
+            if 'Kode' in df_trigger.columns:
+                # Merge dengan broker data
+                df_final = df_trigger.merge(
+                    df_broker,
+                    left_on="Kode",
+                    right_on="stock",
+                    how="left"
+                )
                 
-                # Select relevant columns
-                broker_cols = ['Kode', 'MajorTrend', 'MinorPhase', 'ProbHijau', 'ProbMerah', 
-                              'Sample', 'Confidence', 'net_buy_value', 'net_sell_value', 
-                              'net_value', 'total_value']
-                
-                if all(col in df_final.columns for col in broker_cols):
-                    display_final = df_final[broker_cols].copy()
+                if not df_final.empty:
+                    st.subheader("📊 Trigger + Broker Summary")
                     
-                    # Format broker columns
-                    display_final['net_buy_value'] = display_final['net_buy_value'].apply(
-                        lambda x: format_utils.format_currency(x) if pd.notna(x) else "N/A"
-                    )
-                    display_final['net_sell_value'] = display_final['net_sell_value'].apply(
-                        lambda x: format_utils.format_currency(x) if pd.notna(x) else "N/A"
-                    )
-                    display_final['net_value'] = display_final['net_value'].apply(
-                        lambda x: format_utils.format_currency(x) if pd.notna(x) else "N/A"
-                    )
-                    display_final['total_value'] = display_final['total_value'].apply(
-                        lambda x: format_utils.format_currency(x) if pd.notna(x) else "N/A"
-                    )
+                    # Debug: Tampilkan info tentang df_final
+                    st.write(f"Jumlah baris setelah merge: {len(df_final)}")
+                    st.write(f"Kolom yang tersedia: {df_final.columns.tolist()}")
                     
-                    st.dataframe(display_final, use_container_width=True)
+                    # Pilih kolom untuk ditampilkan
+                    broker_cols = ['Kode', 'MajorTrend', 'MinorPhase', 'ProbHijau', 'ProbMerah', 
+                                  'Sample', 'Confidence', 'net_buy_value', 'net_sell_value', 
+                                  'net_value', 'total_value', 'net_volume']
+                    
+                    # Hanya ambil kolom yang ada di df_final
+                    available_cols = [col for col in broker_cols if col in df_final.columns]
+                    
+                    if available_cols:
+                        display_final = df_final[available_cols].copy()
+                        
+                        # Format kolom numerik
+                        if 'net_buy_value' in display_final.columns:
+                            display_final['net_buy_value'] = display_final['net_buy_value'].apply(
+                                lambda x: format_utils.format_currency(x) if pd.notna(x) else "N/A"
+                            )
+                        
+                        if 'net_sell_value' in display_final.columns:
+                            display_final['net_sell_value'] = display_final['net_sell_value'].apply(
+                                lambda x: format_utils.format_currency(x) if pd.notna(x) else "N/A"
+                            )
+                        
+                        if 'net_value' in display_final.columns:
+                            display_final['net_value'] = display_final['net_value'].apply(
+                                lambda x: format_utils.format_currency(x) if pd.notna(x) else "N/A"
+                            )
+                        
+                        if 'total_value' in display_final.columns:
+                            display_final['total_value'] = display_final['total_value'].apply(
+                                lambda x: format_utils.format_currency(x) if pd.notna(x) else "N/A"
+                            )
+                        
+                        # Tampilkan tabel
+                        st.dataframe(display_final, use_container_width=True)
+                        
+                        # Tambahkan download button
+                        csv = display_final.to_csv(index=False).encode('utf-8')
+                        st.download_button(
+                            label="📥 Download CSV",
+                            data=csv,
+                            file_name=f"trigger_broker_summary_{TODAY}.csv",
+                            mime="text/csv"
+                        )
+                    else:
+                        st.info("Tidak ada kolom yang sesuai untuk ditampilkan setelah merge.")
+                else:
+                    st.info("Merge menghasilkan DataFrame kosong. Mungkin tidak ada overlap antara trigger stocks dan broker data.")
+            else:
+                st.warning("Kolom 'Kode' tidak ditemukan di df_trigger")
+        else:
+            st.info("Tidak ada data trigger untuk di-merge dengan broker summary.")
+    else:
+        st.info("Broker summary tidak tersedia.")
+else:
+    st.info("Broker summary file tidak ditemukan atau kosong.")
 
 # # ======================================================
 # # PERFORMANCE TRACKING DASHBOARD

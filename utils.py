@@ -274,6 +274,31 @@ class CacheManager:
         safe_key = key.replace(".", "_").replace(":", "_")
         return os.path.join(self.cache_dir, f"{safe_key}.{suffix}")
     
+    # ============================================
+    # TAMBAHKAN METHOD INI
+    # ============================================
+    def get_cache_age(self, key: str) -> float:
+        """
+        Get age of cache in days
+        Returns age in days, or float('inf') if cache doesn't exist
+        """
+        import time
+        cache_path = self.get_cache_path(key)
+        
+        if not os.path.exists(cache_path):
+            return float('inf')  # Cache doesn't exist
+        
+        try:
+            # Get file modification time
+            mtime = os.path.getmtime(cache_path)
+            current_time = time.time()
+            age_seconds = current_time - mtime
+            age_days = age_seconds / (24 * 3600)  # Convert to days
+            return age_days
+        except Exception:
+            return float('inf')  # Error reading file
+    # ============================================
+    
     def save(self, key: str, data, suffix: str = "pkl"):
         """Save data to cache"""
         cache_path = self.get_cache_path(key, suffix)
