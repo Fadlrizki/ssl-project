@@ -1433,14 +1433,23 @@ if df_broker is not None and not df_broker.empty:
                             )
                         
                         # Download button
-                        csv = display_df.to_csv(index=False).encode('utf-8')
+                        # Hanya 1 tombol download - FULL DATA saja
+                        st.markdown("---")
+
+                        # Download FULL DATA
+                        full_csv = df_final.to_csv(index=False).encode('utf-8')
                         st.download_button(
-                            "📥 Download CSV",
-                            csv,
+                            "💾 Download CSV (Full Data)",
+                            full_csv,
                             f"trigger_broker_{TODAY}.csv",
                             "text/csv",
-                            use_container_width=True
+                            use_container_width=True,
+                            type="primary",
+                            help="Download semua data termasuk broker summary"
                         )
+
+                        # Info kecil tentang apa yang di-download
+                        st.caption(f"📋 File akan berisi {len(df_final)} baris dan {len(df_final.columns)} kolom termasuk broker data")
                 
                 with detail_col:
                     selected_kode = None
