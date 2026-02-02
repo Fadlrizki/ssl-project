@@ -761,9 +761,9 @@ def load_broker_summary(trade_date, max_back=7):
                 if not df.empty:
                     # Cek kolom yang ada
                     st.info(f"Loaded broker summary from {check_date}")
-                    st.write(f"File: {path}")
-                    st.write(f"Columns: {df.columns.tolist()}")
-                    st.write(f"Rows: {len(df)}")
+                    # st.write(f"File: {path}")
+                    # st.write(f"Columns: {df.columns.tolist()}")
+                    # st.write(f"Rows: {len(df)}")
                     return df, check_date
             except Exception as e:
                 st.error(f"Error loading {path}: {e}")
