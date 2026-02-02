@@ -981,12 +981,24 @@ if not display_df.empty:
     display_df = display_df[display_cols]
 
 # Display interactive dataframe
-event = st.dataframe(
-    display_df.style.applymap(color_decision, subset=['FinalDecision']),
-    use_container_width=True,
-    selection_mode="single-row",
-    on_select="rerun"
-)
+try:
+    event = st.dataframe(
+        display_df.style.applymap(color_decision, subset=['FinalDecision']),
+        use_container_width=True,
+        selection_mode="single-row",
+        on_select="rerun"
+    )
+except Exception as e:
+    st.error(f"Error dalam styling DataFrame: {e}")
+    st.write("Kolom yang tersedia:", display_df.columns.tolist())
+    
+    # Tampilkan DataFrame tanpa styling
+    event = st.dataframe(
+        display_df,
+        use_container_width=True,
+        selection_mode="single-row",
+        on_select="rerun"
+    )
 
 # ======================================================
 # DETAIL VIEW FOR SELECTED STOCK
