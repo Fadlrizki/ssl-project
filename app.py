@@ -1365,9 +1365,8 @@ df_broker, broker_used_date = load_broker_summary(TRADE_DATE)
 
 if df_broker is not None and not df_broker.empty:
     if show_status("Broker summary", TRADE_DATE, broker_used_date, df_broker):
-        # Cek jika df_trigger tidak kosong
         if df_trigger is not None and not df_trigger.empty and 'Kode' in df_trigger.columns:
-            # Merge dengan broker data
+            # Merge data
             df_final = df_trigger.merge(
                 df_broker,
                 left_on="Kode",
@@ -1378,44 +1377,32 @@ if df_broker is not None and not df_broker.empty:
             if not df_final.empty:
                 st.subheader("📊 Trigger + Broker Summary")
                 
-                # Tentukan kolom yang ingin ditampilkan
-                display_columns = [
-                    'Kode', 'MajorTrend', 'MinorPhase', 
-                    'ProbHijau', 'ProbMerah', 'Confidence',
-                    'top5_buyers', 'top5_sellers', 'net_volume', 'daily_summary'
-                ]
+                # Buat layout dengan dua kolom utama
+                main_col, detail_col = st.columns([2, 1])
                 
-                # Filter hanya kolom yang ada
-                available_cols = [col for col in display_columns if col in df_final.columns]
-                
-                if available_cols:
-                    display_final = df_final[available_cols].copy()
-                    
-                    # Format kolom
-                    if 'ProbHijau' in display_final.columns:
-                        display_final['ProbHijau'] = display_final['ProbHijau'].apply(
-                            lambda x: f"{x}%" if pd.notna(x) else "N/A"
-                        )
-                    
-                    if 'ProbMerah' in display_final.columns:
-                        display_final['ProbMerah'] = display_final['ProbMerah'].apply(
-                            lambda x: f"{x}%" if pd.notna(x) else "N/A"
-                        )
-                    
-                    if 'net_volume' in display_final.columns:
-                        display_final['net_volume'] = display_final['net_volume'].apply(
-                            lambda x: f"{x:,.0f}" if pd.notna(x) else "N/A"
-                        )
-                    
+                with main_col:
                     # Tampilkan tabel utama
-                    main_cols = ['Kode', 'MajorTrend', 'MinorPhase', 'ProbHijau', 'ProbMerah', 'Confidence', 'net_volume']
-                    main_cols = [col for col in main_cols if col in display_final.columns]
+                    main_cols = ['Kode', 'MajorTrend', 'MinorPhase', 
+                               'ProbHijau', 'ProbMerah', 'Confidence', 'net_volume']
+                    main_cols = [col for col in main_cols if col in df_final.columns]
                     
                     if main_cols:
-                        main_df = display_final[main_cols].copy()
+                        display_df = df_final[main_cols].copy()
                         
-                        # Tambahkan styling untuk probabilitas
-                        def highlight_prob(val):
+                        # Format kolom
+                        for col in ['ProbHijau', 'ProbMerah']:
+                            if col in display_df.columns:
+                                display_df[col] = display_df[col].apply(
+                                    lambda x: f"{x:.1f}%" if pd.notna(x) else "N/A"
+                                )
+                        
+                        if 'net_volume' in display_df.columns:
+                            display_df['net_volume'] = display_df['net_volume'].apply(
+                                lambda x: f"{x:,.0f}" if pd.notna(x) else "N/A"
+                            )
+                        
+                        # Styling
+                        def color_prob(val):
                             if isinstance(val, str) and '%' in val:
                                 try:
                                     prob = float(val.replace('%', ''))
@@ -1423,81 +1410,135 @@ if df_broker is not None and not df_broker.empty:
                                         return 'background-color: #d4edda; font-weight: bold;'
                                     elif prob >= 60:
                                         return 'background-color: #fff3cd;'
-                                    elif prob <= 40:
-                                        return 'background-color: #f8d7da;'
                                 except:
                                     pass
                             return ''
                         
-                        # Apply styling ke kolom ProbHijau
-                        styled_df = main_df.copy()
-                        if 'ProbHijau' in styled_df.columns:
-                            styled_df = styled_df.style.applymap(
-                                highlight_prob, 
-                                subset=['ProbHijau']
+                        if 'ProbHijau' in display_df.columns:
+                            styled_df = display_df.style.applymap(color_prob, subset=['ProbHijau'])
+                            selection = st.dataframe(
+                                styled_df,
+                                use_container_width=True,
+                                height=400,
+                                on_select="rerun",
+                                selection_mode="single-row"
+                            )
+                        else:
+                            selection = st.dataframe(
+                                display_df,
+                                use_container_width=True,
+                                height=400,
+                                on_select="rerun",
+                                selection_mode="single-row"
                             )
                         
-                        st.dataframe(styled_df, use_container_width=True, height=300)
-                        
-                        # Tampilkan detail broker dalam expander
-                        if any(col in ['top5_buyers', 'top5_sellers', 'daily_summary'] for col in available_cols):
-                            with st.expander("📋 Lihat Detail Broker Activity"):
-                                for idx, row in display_final.iterrows():
-                                    st.write(f"### {row['Kode']}")
-                                    
-                                    col1, col2 = st.columns(2)
-                                    
-                                    with col1:
-                                        if 'top5_buyers' in row and pd.notna(row['top5_buyers']):
-                                            st.write("**Top 5 Buyers:**")
-                                            st.text(row['top5_buyers'])
-                                    
-                                    with col2:
-                                        if 'top5_sellers' in row and pd.notna(row['top5_sellers']):
-                                            st.write("**Top 5 Sellers:**")
-                                            st.text(row['top5_sellers'])
-                                    
-                                    if 'daily_summary' in row and pd.notna(row['daily_summary']):
-                                        st.info(f"**Summary:** {row['daily_summary']}")
-                                    
-                                    st.divider()
-                        
                         # Download button
-                        csv = main_df.to_csv(index=False).encode('utf-8')
+                        csv = display_df.to_csv(index=False).encode('utf-8')
                         st.download_button(
-                            label="📥 Download CSV",
-                            data=csv,
-                            file_name=f"trigger_broker_{TODAY}.csv",
-                            mime="text/csv",
+                            "📥 Download CSV",
+                            csv,
+                            f"trigger_broker_{TODAY}.csv",
+                            "text/csv",
                             use_container_width=True
                         )
+                
+                with detail_col:
+                    selected_kode = None
+                    
+                    # Coba ambil dari table selection pertama
+                    if selection.selection.rows:
+                        selected_idx = selection.selection.rows[0]
+                        selected_kode = display_df.iloc[selected_idx]['Kode']
+                    
+                    # Fallback ke selectbox
+                    if not selected_kode and 'Kode' in display_df.columns:
+                        selected_kode = st.selectbox(
+                            "Pilih Saham:",
+                            display_df['Kode'].tolist(),
+                            key="broker_detail_select"
+                        )
+                    
+                    if selected_kode:
+                        # Ambil data
+                        selected_data = df_final[df_final['Kode'] == selected_kode].iloc[0]
                         
-                        # Stats summary
-                        if 'ProbHijau' in main_df.columns:
+                        # Header
+                        st.markdown(f"### {selected_kode}")
+                        
+                        # Metrics card
+                        with st.container(border=True):
+                            col1, col2 = st.columns(2)
+                            
+                            with col1:
+                                if 'ProbHijau' in selected_data and pd.notna(selected_data['ProbHijau']):
+                                    prob = float(selected_data['ProbHijau'])
+                                    st.metric("Prob. Hijau", f"{prob:.1f}%")
+                            
+                            with col2:
+                                if 'net_volume' in selected_data and pd.notna(selected_data['net_volume']):
+                                    net_vol = float(selected_data['net_volume'])
+                                    st.metric("Net Volume", f"{net_vol:,.0f}")
+                        
+                        # Daily summary
+                        if 'daily_summary' in selected_data and pd.notna(selected_data['daily_summary']):
+                            st.info(f"📊 {selected_data['daily_summary']}")
+                        
+                        # Buyer vs Seller comparison
+                        st.markdown("### 🤝 Buyer vs Seller")
+                        
+                        col_buyer, col_seller = st.columns(2)
+                        
+                        with col_buyer:
+                            st.markdown("##### 🟢 **Top Buyers**")
+                            if 'top5_buyers' in selected_data and pd.notna(selected_data['top5_buyers']):
+                                buyers_text = selected_data['top5_buyers']
+                                buyers_lines = buyers_text.split('\n')
+                                for line in buyers_lines:
+                                    st.markdown(f"<div style='margin-bottom: 5px;'>{line}</div>", 
+                                               unsafe_allow_html=True)
+                            else:
+                                st.info("No buyer data")
+                        
+                        with col_seller:
+                            st.markdown("##### 🔴 **Top Sellers**")
+                            if 'top5_sellers' in selected_data and pd.notna(selected_data['top5_sellers']):
+                                sellers_text = selected_data['top5_sellers']
+                                sellers_lines = sellers_text.split('\n')
+                                for line in sellers_lines:
+                                    st.markdown(f"<div style='margin-bottom: 5px;'>{line}</div>", 
+                                               unsafe_allow_html=True)
+                            else:
+                                st.info("No seller data")
+                        
+                        # Mini chart untuk net volume
+                        if 'net_volume' in selected_data and pd.notna(selected_data['net_volume']):
                             try:
-                                probs = main_df['ProbHijau'].apply(
-                                    lambda x: float(str(x).replace('%', '')) if pd.notna(x) else 0
-                                )
-                                avg_prob = probs.mean()
+                                net_vol = float(selected_data['net_volume'])
+                                st.markdown("### 📊 Volume Analysis")
                                 
-                                col1, col2, col3 = st.columns(3)
-                                with col1:
-                                    st.metric("Jumlah Saham", len(main_df))
-                                with col2:
-                                    st.metric("Rata-rata Prob Hijau", f"{avg_prob:.1f}%")
-                                with col3:
-                                    high_prob_count = len(probs[probs >= 60])
-                                    st.metric("Prob ≥60%", f"{high_prob_count} saham")
+                                # Simple bar chart
+                                if net_vol != 0:
+                                    max_val = max(abs(net_vol), 100000)
+                                    percentage = (abs(net_vol) / max_val) * 100
+                                    
+                                    color = "green" if net_vol > 0 else "red"
+                                    label = "Buyer Dominan" if net_vol > 0 else "Seller Dominan"
+                                    
+                                    st.markdown(f"""
+                                    <div style="margin: 10px 0;">
+                                        <div style="background-color: #f0f0f0; height: 20px; border-radius: 10px; overflow: hidden;">
+                                            <div style="background-color: {color}; height: 100%; width: {min(percentage, 100)}%; 
+                                                        display: flex; align-items: center; padding-left: 10px; color: white; font-weight: bold;">
+                                                {label}
+                                            </div>
+                                        </div>
+                                        <div style="text-align: center; margin-top: 5px;">
+                                            <strong>{net_vol:,.0f} lot</strong>
+                                        </div>
+                                    </div>
+                                    """, unsafe_allow_html=True)
                             except:
                                 pass
-                else:
-                    st.info("Tidak ada kolom yang sesuai untuk ditampilkan.")
-            else:
-                st.info("Tidak ada overlap antara saham trigger dan broker summary.")
-        else:
-            st.info("Belum ada hasil trigger screening untuk di-merge.")
-else:
-    st.info("Data broker summary belum tersedia.")
 
 # # ======================================================
 # # PERFORMANCE TRACKING DASHBOARD
