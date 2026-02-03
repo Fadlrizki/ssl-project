@@ -147,23 +147,45 @@ def save_backtest_cache(cache):
 def render_technical_chart(df, kode, suffix="detail"):
     """
     Fixed technical chart with proper Plotly properties
+    Volume chart di atas RSI chart
     """
+    num_points = len(df)
+    
+    # Hitung range tanggal
+    date_range = pd.date_range(start=df.index[0], end=df.index[-1], periods=num_points)
+    # Atur padding untuk memperlebar bar
+    if num_points <= 50:
+        bar_padding = 0.8  # Lebar untuk data sedikit
+    elif num_points <= 100:
+        bar_padding = 0.7
+    elif num_points <= 200:
+        bar_padding = 0.6
+    else:
+        bar_padding = 0.5
+    
+    # Hitung lebar bar dalam hari
+    if num_points > 1:
+        avg_day_gap = (df.index[-1] - df.index[0]).days / (num_points - 1)
+        bar_width_ms = avg_day_gap * 24 * 3600 * 1000 * bar_padding  # dalam milidetik
+    else:
+        bar_width_ms = 24 * 3600 * 1000
+
     fig = make_subplots(
         rows=4,
         cols=1,
         shared_xaxes=True,
         vertical_spacing=0.03,
-        row_heights=[0.45, 0.15, 0.15, 0.25],
+        row_heights=[0.45, 0.25, 0.15, 0.15],  # Diubah: Volume lebih besar, RSI dan MACD lebih kecil
         subplot_titles=(
             f"{kode} - Price & EMAs",
-            "RSI (14)",
-            "MACD",
-            "Volume & Volume MA20"
+            "Volume & Volume MA20",  # Pindah ke row 2
+            "RSI (14)",  # Pindah ke row 3
+            "MACD"  # Pindah ke row 4
         )
     )
 
     # =========================
-    # 1. PRICE CHART
+    # 1. PRICE CHART (row 1)
     # =========================
     fig.add_trace(
         go.Candlestick(
@@ -200,76 +222,9 @@ def render_technical_chart(df, kode, suffix="detail"):
             )
 
     # =========================
-    # 2. RSI CHART
+    # 2. VOLUME CHART (row 2) - DIPINDAH KE ATAS RSI
     # =========================
-    if "RSI" in df.columns:
-        fig.add_trace(
-            go.Scatter(
-                x=df.index,
-                y=df["RSI"],
-                mode="lines",
-                name="RSI",
-                line=dict(width=1.5, color="purple")
-            ),
-            row=2, col=1
-        )
-        
-        # RSI levels
-        fig.add_hrect(y0=70, y1=100, line_width=0, fillcolor="red", opacity=0.1, row=2, col=1)
-        fig.add_hrect(y0=30, y1=70, line_width=0, fillcolor="gray", opacity=0.05, row=2, col=1)
-        fig.add_hrect(y0=0, y1=30, line_width=0, fillcolor="green", opacity=0.1, row=2, col=1)
-        
-        fig.add_hline(y=70, line_dash="dash", line_color="red", row=2, col=1)
-        fig.add_hline(y=30, line_dash="dash", line_color="green", row=2, col=1)
-        fig.add_hline(y=50, line_dash="dot", line_color="gray", opacity=0.5, row=2, col=1)
-
-    # =========================
-    # 3. MACD CHART
-    # =========================
-    if "MACD" in df.columns and "MACD_Signal" in df.columns:
-        # MACD Line
-        fig.add_trace(
-            go.Scatter(
-                x=df.index,
-                y=df["MACD"],
-                mode="lines",
-                name="MACD",
-                line=dict(color="blue", width=1.5)
-            ),
-            row=3, col=1
-        )
-        
-        # Signal Line
-        fig.add_trace(
-            go.Scatter(
-                x=df.index,
-                y=df["MACD_Signal"],
-                mode="lines",
-                name="Signal",
-                line=dict(color="orange", width=1.5)
-            ),
-            row=3, col=1
-        )
-        
-        # MACD Histogram
-        colors = ['rgba(0, 128, 0, 0.8)' if val >= 0 else 'rgba(255, 0, 0, 0.8)' for val in df["MACD_Hist"]]
-        fig.add_trace(
-            go.Bar(
-                x=df.index,
-                y=df["MACD_Hist"],
-                name="Histogram",
-                marker_color=colors,
-                opacity=0.7,
-                width=0.8
-            ),
-            row=3, col=1
-        )
-        
-        fig.add_hline(y=0, line_color="black", line_width=1, row=3, col=1)
-
-    # =========================
-    # 4. VOLUME CHART
-    # =========================
+    
     if "Volume" in df.columns:
         # Hitung volume dalam juta atau ribu
         volume_max = df["Volume"].max()
@@ -291,7 +246,7 @@ def render_technical_chart(df, kode, suffix="detail"):
             else:
                 colors.append('green' if df["Close"].iloc[i] > df["Close"].iloc[i-1] else 'red')
         
-        # Volume bars
+        # **TRICK 1: Gunakan go.Bar dengan width yang dikonversi ke milidetik**
         fig.add_trace(
             go.Bar(
                 x=df.index,
@@ -299,11 +254,21 @@ def render_technical_chart(df, kode, suffix="detail"):
                 name=f"Volume ({volume_unit})",
                 marker_color=colors,
                 opacity=0.8,
-                width=0.7,
-                marker_line_width=0
+                width=bar_width_ms,  # **Ini kuncinya!**
+                marker_line_width=0,
+                offset=0  # Pastikan tidak ada offset
             ),
-            row=4, col=1
+            row=2, col=1
         )
+        
+        # **TRICK 2: Atur bargap dan bargroupgap di layout**
+        fig.update_layout(
+            bargap=0.1,  # Gap antar bar group
+            bargroupgap=0.05  # Gap antar bar dalam group yang sama
+        )
+        
+        # **TRICK 3: Atur barmode untuk menghindari stacking**
+        fig.update_layout(barmode='overlay')
 
         # Volume MA20
         if "VOL_MA20" in df.columns:
@@ -315,8 +280,76 @@ def render_technical_chart(df, kode, suffix="detail"):
                     name=f"Vol MA20 ({volume_unit})",
                     line=dict(color="orange", width=2)
                 ),
-                row=4, col=1
+                row=2, col=1  # Diubah dari row 4 ke row 2
             )
+
+    # =========================
+    # 3. RSI CHART (row 3) - DIPINDAH KE BAWAH VOLUME
+    # =========================
+    if "RSI" in df.columns:
+        fig.add_trace(
+            go.Scatter(
+                x=df.index,
+                y=df["RSI"],
+                mode="lines",
+                name="RSI",
+                line=dict(width=1.5, color="purple")
+            ),
+            row=3, col=1  # Diubah dari row 2 ke row 3
+        )
+        
+        # RSI levels
+        fig.add_hrect(y0=70, y1=100, line_width=0, fillcolor="red", opacity=0.1, row=3, col=1)  # Diubah row
+        fig.add_hrect(y0=30, y1=70, line_width=0, fillcolor="gray", opacity=0.05, row=3, col=1)  # Diubah row
+        fig.add_hrect(y0=0, y1=30, line_width=0, fillcolor="green", opacity=0.1, row=3, col=1)  # Diubah row
+        
+        fig.add_hline(y=70, line_dash="dash", line_color="red", row=3, col=1)  # Diubah row
+        fig.add_hline(y=30, line_dash="dash", line_color="green", row=3, col=1)  # Diubah row
+        fig.add_hline(y=50, line_dash="dot", line_color="gray", opacity=0.5, row=3, col=1)  # Diubah row
+
+    # =========================
+    # 4. MACD CHART (row 4)
+    # =========================
+    if "MACD" in df.columns and "MACD_Signal" in df.columns:
+        # MACD Line
+        fig.add_trace(
+            go.Scatter(
+                x=df.index,
+                y=df["MACD"],
+                mode="lines",
+                name="MACD",
+                line=dict(color="blue", width=1.5)
+            ),
+            row=4, col=1
+        )
+        
+        # Signal Line
+        fig.add_trace(
+            go.Scatter(
+                x=df.index,
+                y=df["MACD_Signal"],
+                mode="lines",
+                name="Signal",
+                line=dict(color="orange", width=1.5)
+            ),
+            row=4, col=1
+        )
+        
+        # MACD Histogram
+        colors = ['rgba(0, 128, 0, 0.8)' if val >= 0 else 'rgba(255, 0, 0, 0.8)' for val in df["MACD_Hist"]]
+        fig.add_trace(
+            go.Bar(
+                x=df.index,
+                y=df["MACD_Hist"],
+                name="Histogram",
+                marker_color=colors,
+                opacity=0.7,
+                width=0.8
+            ),
+            row=4, col=1
+        )
+        
+        fig.add_hline(y=0, line_color="black", line_width=1, row=4, col=1)
 
     # =========================
     # LAYOUT & STYLING - FIXED
@@ -332,47 +365,48 @@ def render_technical_chart(df, kode, suffix="detail"):
             x=1
         ),
         xaxis_rangeslider_visible=False,
-        # xaxis4_rangeslider_visible=True,
         margin=dict(t=60, b=40, l=60, r=60),
         template="plotly_white",
         hovermode="x unified"
     )
     
-    # Update axis titles - FIXED: gunakan dict title
+    # Update axis titles
     fig.update_yaxes(
         title=dict(text="Price (IDR)", font=dict(size=12)),
         row=1, col=1,
         tickformat=","
     )
     
-    fig.update_yaxes(
-        title=dict(text="RSI", font=dict(size=12)),
-        row=2, col=1,
-        range=[0, 100]
-    )
-    
-    fig.update_yaxes(
-        title=dict(text="MACD", font=dict(size=12)),
-        row=3, col=1
-    )
-    
-    # Volume y-axis
+    # Volume y-axis (row 2)
     if "Volume" in df.columns:
         volume_title = f"Volume ({volume_unit})"
         fig.update_yaxes(
             title=dict(text=volume_title, font=dict(size=12)),
-            row=4, col=1,
+            row=2, col=1,  # Diubah dari row 4 ke row 2
             tickformat=","
         )
     
-    # X-axis for volume chart
+    # RSI y-axis (row 3)
+    fig.update_yaxes(
+        title=dict(text="RSI", font=dict(size=12)),
+        row=3, col=1,  # Diubah dari row 2 ke row 3
+        range=[0, 100]
+    )
+    
+    # MACD y-axis (row 4)
+    fig.update_yaxes(
+        title=dict(text="MACD", font=dict(size=12)),
+        row=4, col=1
+    )
+    
+    # X-axis for MACD chart (row 4)
     fig.update_xaxes(
         title=dict(text="Date", font=dict(size=12)),
         row=4, col=1
     )
     
-    # Handle secondary axis for volume ratio dengan cara yang benar
-    if "VOL_RATIO" in df.columns:
+    # Handle secondary axis untuk volume ratio (jika ada)
+    if "VOL_RATIO" in df.columns and "Volume" in df.columns:
         # Buat trace terpisah untuk volume ratio
         fig.add_trace(
             go.Scatter(
@@ -382,14 +416,15 @@ def render_technical_chart(df, kode, suffix="detail"):
                 name="Volume Ratio",
                 line=dict(color="purple", width=1, dash="dash"),
                 yaxis="y5"
-            )
+            ),
+            row=2, col=1  # Sekarang di row 2
         )
         
         # Update layout untuk secondary axis
         fig.update_layout(
             yaxis5=dict(
                 title="Volume Ratio",
-                overlaying="y4",
+                overlaying="y2",  # Diubah dari y4 ke y2
                 side="right",
                 range=[0, max(3, df["VOL_RATIO"].max() * 1.1)],
                 showgrid=False,
@@ -399,13 +434,13 @@ def render_technical_chart(df, kode, suffix="detail"):
         
         # Tambah horizontal lines di axis yang benar
         fig.add_hline(y=1.0, line_dash="dot", line_color="gray", 
-                     line_width=1, row=4, col=1, yref="y5")
+                     line_width=1, row=2, col=1, yref="y5")
         fig.add_hline(y=1.5, line_dash="dash", line_color="orange", 
-                     line_width=1, row=4, col=1, yref="y5")
+                     line_width=1, row=2, col=1, yref="y5")
         fig.add_hline(y=2.0, line_dash="dash", line_color="red", 
-                     line_width=1, row=4, col=1, yref="y5")
+                     line_width=1, row=2, col=1, yref="y5")
 
-    # Volume statistics annotation
+    # Volume statistics annotation (sekarang di row 2)
     if "Volume" in df.columns:
         avg_volume = df["Volume"].mean() / volume_divisor
         current_volume = df["Volume"].iloc[-1] / volume_divisor
