@@ -1381,13 +1381,16 @@ if df_broker is not None and not df_broker.empty:
                 main_col, detail_col = st.columns([2, 1])
                 
                 with main_col:
-                    # Tampilkan tabel utama
+                    # Tampilkan tabel utama - TAMBAHKAN AVG PRICE COLUMNS
                     main_cols = ['Kode', 'MajorTrend', 'MinorPhase', 
-                               'ProbHijau', 'ProbMerah', 'Confidence', 'net_volume']
-                    main_cols = [col for col in main_cols if col in df_final.columns]
+                               'ProbHijau', 'ProbMerah', 'Confidence', 
+                               'net_volume', 'avg_buy_price_buyers', 'avg_sell_price_buyers']
                     
-                    if main_cols:
-                        display_df = df_final[main_cols].copy()
+                    # Filter hanya kolom yang ada di df_final
+                    available_cols = [col for col in main_cols if col in df_final.columns]
+                    
+                    if available_cols:
+                        display_df = df_final[available_cols].copy()
                         
                         # Format kolom
                         for col in ['ProbHijau', 'ProbMerah']:
@@ -1396,12 +1399,24 @@ if df_broker is not None and not df_broker.empty:
                                     lambda x: f"{x:.1f}%" if pd.notna(x) else "N/A"
                                 )
                         
+                        # Format net_volume
                         if 'net_volume' in display_df.columns:
                             display_df['net_volume'] = display_df['net_volume'].apply(
                                 lambda x: f"{x:,.0f}" if pd.notna(x) else "N/A"
                             )
                         
-                        # Styling
+                        # Format avg prices
+                        if 'avg_buy_price_buyers' in display_df.columns:
+                            display_df['avg_buy_price_buyers'] = display_df['avg_buy_price_buyers'].apply(
+                                lambda x: f"{x:,.0f}" if pd.notna(x) and x != 0 else "N/A"
+                            )
+                        
+                        if 'avg_sell_price_buyers' in display_df.columns:
+                            display_df['avg_sell_price_buyers'] = display_df['avg_sell_price_buyers'].apply(
+                                lambda x: f"{x:,.0f}" if pd.notna(x) and x != 0 else "N/A"
+                            )
+                        
+                        # Styling untuk probabilitas dan avg prices
                         def color_prob(val):
                             if isinstance(val, str) and '%' in val:
                                 try:
@@ -1414,28 +1429,74 @@ if df_broker is not None and not df_broker.empty:
                                     pass
                             return ''
                         
-                        if 'ProbHijau' in display_df.columns:
-                            styled_df = display_df.style.applymap(color_prob, subset=['ProbHijau'])
-                            selection = st.dataframe(
-                                styled_df,
-                                use_container_width=True,
-                                height=400,
-                                on_select="rerun",
-                                selection_mode="single-row"
-                            )
-                        else:
-                            selection = st.dataframe(
-                                display_df,
-                                use_container_width=True,
-                                height=400,
-                                on_select="rerun",
-                                selection_mode="single-row"
-                            )
+                        # Warna untuk avg buy price (hijau untuk harga tinggi)
+                        def color_avg_buy(val):
+                            if isinstance(val, str) and val != 'N/A':
+                                try:
+                                    price = float(val.replace(',', ''))
+                                    # Anda bisa menyesuaikan threshold sesuai kebutuhan
+                                    if price > 10000:
+                                        return 'background-color: #e8f5e9; color: #2e7d32;'
+                                    elif price > 5000:
+                                        return 'background-color: #f1f8e9;'
+                                except:
+                                    pass
+                            return ''
+                        
+                        # Warna untuk avg sell price (merah untuk harga rendah)
+                        def color_avg_sell(val):
+                            if isinstance(val, str) and val != 'N/A':
+                                try:
+                                    price = float(val.replace(',', ''))
+                                    if price < 1000:
+                                        return 'background-color: #ffebee; color: #c62828;'
+                                except:
+                                    pass
+                            return ''
+                        
+                        # Apply styling
+                        styled_df = display_df.copy()
+                        
+                        if 'ProbHijau' in styled_df.columns:
+                            styled_df = styled_df.style.applymap(color_prob, subset=['ProbHijau'])
+                        
+                        if 'avg_buy_price_buyers' in styled_df.columns:
+                            styled_df = styled_df.applymap(color_avg_buy, subset=['avg_buy_price_buyers'])
+                        
+                        if 'avg_sell_price_buyers' in styled_df.columns:
+                            styled_df = styled_df.applymap(color_avg_sell, subset=['avg_sell_price_buyers'])
+                        
+                        # Warna untuk net volume
+                        if 'net_volume' in styled_df.columns:
+                            def color_net_volume(val):
+                                if isinstance(val, str) and val != 'N/A':
+                                    try:
+                                        # Hapus koma dan konversi ke int
+                                        clean_val = val.replace(',', '').replace('N/A', '0')
+                                        volume = int(float(clean_val)) if clean_val else 0
+                                        
+                                        if volume > 0:
+                                            return 'background-color: #e8f5e9; color: #2e7d32; font-weight: bold;'
+                                        elif volume < 0:
+                                            return 'background-color: #ffebee; color: #c62828; font-weight: bold;'
+                                    except:
+                                        pass
+                                return ''
+                            
+                            styled_df = styled_df.applymap(color_net_volume, subset=['net_volume'])
+                        
+                        # Tampilkan tabel
+                        selection = st.dataframe(
+                            styled_df,
+                            use_container_width=True,
+                            height=400,
+                            on_select="rerun",
+                            selection_mode="single-row"
+                        )
                         
                         # Download button
-                        # Hanya 1 tombol download - FULL DATA saja
                         st.markdown("---")
-
+                        
                         # Download FULL DATA
                         full_csv = df_final.to_csv(index=False).encode('utf-8')
                         st.download_button(
@@ -1445,19 +1506,41 @@ if df_broker is not None and not df_broker.empty:
                             "text/csv",
                             use_container_width=True,
                             type="primary",
-                            help="Download semua data termasuk broker summary"
+                            help="Download semua data termasuk broker summary dan avg prices"
                         )
-
+                        
                         # Info kecil tentang apa yang di-download
                         st.caption(f"📋 File akan berisi {len(df_final)} baris dan {len(df_final.columns)} kolom termasuk broker data")
+                        
+                        # Tampilkan stats ringkasan
+                        with st.expander("📊 Statistics Summary"):
+                            col1, col2, col3 = st.columns(3)
+                            
+                            with col1:
+                                if 'ProbHijau' in df_final.columns:
+                                    avg_prob = df_final['ProbHijau'].mean()
+                                    st.metric("Avg Prob HIJAU", f"{avg_prob:.1f}%")
+                            
+                            with col2:
+                                if 'net_volume' in df_final.columns:
+                                    total_volume = df_final['net_volume'].sum()
+                                    st.metric("Total Net Volume", f"{total_volume:,.0f}")
+                            
+                            with col3:
+                                if 'avg_buy_price_buyers' in df_final.columns:
+                                    avg_buy_price = df_final['avg_buy_price_buyers'].mean()
+                                    st.metric("Avg Buy Price", f"{avg_buy_price:,.0f}" if not pd.isna(avg_buy_price) else "N/A")
                 
                 with detail_col:
                     selected_kode = None
                     
-                    # Coba ambil dari table selection pertama
-                    if selection.selection.rows:
-                        selected_idx = selection.selection.rows[0]
-                        selected_kode = display_df.iloc[selected_idx]['Kode']
+                    # Coba ambil dari table selection
+                    try:
+                        if hasattr(selection, 'selection') and selection.selection.rows:
+                            selected_idx = selection.selection.rows[0]
+                            selected_kode = display_df.iloc[selected_idx]['Kode']
+                    except:
+                        pass
                     
                     # Fallback ke selectbox
                     if not selected_kode and 'Kode' in display_df.columns:
@@ -1471,22 +1554,84 @@ if df_broker is not None and not df_broker.empty:
                         # Ambil data
                         selected_data = df_final[df_final['Kode'] == selected_kode].iloc[0]
                         
-                        # Header
+                        # Header dengan lebih banyak info
                         st.markdown(f"### {selected_kode}")
                         
-                        # Metrics card
+                        # Metrics card dengan avg prices
                         with st.container(border=True):
-                            col1, col2 = st.columns(2)
+                            # Gunakan layout yang lebih lebar
+                            st.markdown("""
+                            <style>
+                            .metrics-container {
+                                padding: 10px;
+                            }
+                            .metric-value {
+                                font-size: 20px !important;
+                                font-weight: bold;
+                            }
+                            </style>
+                            """, unsafe_allow_html=True)
+                            
+                            col1, col2, col3 = st.columns([1, 1, 1])
                             
                             with col1:
                                 if 'ProbHijau' in selected_data and pd.notna(selected_data['ProbHijau']):
                                     prob = float(selected_data['ProbHijau'])
-                                    st.metric("Prob. Hijau", f"{prob:.1f}%")
+                                    # Gunakan container dalam col untuk lebih banyak kontrol
+                                    with st.container():
+                                        st.markdown("**Prob. Hijau**")
+                                        st.markdown(f"<div class='metric-value'>{prob:.1f}%</div>", unsafe_allow_html=True)
                             
                             with col2:
                                 if 'net_volume' in selected_data and pd.notna(selected_data['net_volume']):
                                     net_vol = float(selected_data['net_volume'])
-                                    st.metric("Net Volume", f"{net_vol:,.0f}")
+                                    color = "🟢" if net_vol > 0 else "🔴"
+                                    with st.container():
+                                        st.markdown("**Net Volume**")
+                                        st.markdown(f"<div class='metric-value'>{color} {abs(net_vol):,.0f}</div>", unsafe_allow_html=True)
+                            
+                            with col3:
+                                if 'Confidence' in selected_data:
+                                    confidence = selected_data['Confidence']
+                                    # Warna berdasarkan confidence
+                                    conf_color = {
+                                        'VERY_HIGH': '🟢',
+                                        'HIGH': '🟡',
+                                        'MEDIUM': '🟠',
+                                        'LOW': '🔴',
+                                        'VERY_LOW': '⚫'
+                                    }.get(confidence, '⚪')
+                                    
+                                    with st.container():
+                                        st.markdown("**Confidence**")
+                                        st.markdown(f"<div class='metric-value'>{conf_color} {confidence}</div>", unsafe_allow_html=True)
+                        
+                        # Price metrics card
+                        with st.container(border=True):
+                            st.markdown("**💰 Price Information**")
+                            col_price1, col_price2 = st.columns(2)
+                            
+                            with col_price1:
+                                if 'avg_buy_price_buyers' in selected_data and pd.notna(selected_data['avg_buy_price_buyers']):
+                                    avg_buy = float(selected_data['avg_buy_price_buyers'])
+                                    st.metric("Avg Buy Price", f"{avg_buy:,.0f}")
+                            
+                            with col_price2:
+                                if 'avg_sell_price_buyers' in selected_data and pd.notna(selected_data['avg_sell_price_buyers']):
+                                    avg_sell = float(selected_data['avg_sell_price_buyers'])
+                                    st.metric("Avg Sell Price", f"{avg_sell:,.0f}")
+                            
+                            # Calculate spread jika ada kedua data
+                            if ('avg_buy_price_buyers' in selected_data and 'avg_sell_price_buyers' in selected_data and
+                                pd.notna(selected_data['avg_buy_price_buyers']) and 
+                                pd.notna(selected_data['avg_sell_price_buyers'])):
+                                
+                                avg_buy = float(selected_data['avg_buy_price_buyers'])
+                                avg_sell = float(selected_data['avg_sell_price_buyers'])
+                                spread = avg_buy - avg_sell
+                                spread_pct = (spread / avg_sell * 100) if avg_sell > 0 else 0
+                                
+                                st.caption(f"**Spread:** {spread:,.0f} ({spread_pct:+.1f}%)")
                         
                         # Daily summary
                         if 'daily_summary' in selected_data and pd.notna(selected_data['daily_summary']):
@@ -1503,8 +1648,14 @@ if df_broker is not None and not df_broker.empty:
                                 buyers_text = selected_data['top5_buyers']
                                 buyers_lines = buyers_text.split('\n')
                                 for line in buyers_lines:
-                                    st.markdown(f"<div style='margin-bottom: 5px;'>{line}</div>", 
-                                               unsafe_allow_html=True)
+                                    # Highlight avg prices dalam text
+                                    line_display = line
+                                    if 'Avg Buy:' in line or 'Avg Sell:' in line:
+                                        line_display = f"<div style='background-color: #f8f9fa; padding: 5px; border-radius: 4px; margin: 2px 0;'>{line}</div>"
+                                    else:
+                                        line_display = f"<div style='margin-bottom: 5px;'>{line}</div>"
+                                    
+                                    st.markdown(line_display, unsafe_allow_html=True)
                             else:
                                 st.info("No buyer data")
                         
@@ -1514,16 +1665,34 @@ if df_broker is not None and not df_broker.empty:
                                 sellers_text = selected_data['top5_sellers']
                                 sellers_lines = sellers_text.split('\n')
                                 for line in sellers_lines:
-                                    st.markdown(f"<div style='margin-bottom: 5px;'>{line}</div>", 
-                                               unsafe_allow_html=True)
+                                    # Highlight avg prices dalam text
+                                    line_display = line
+                                    if 'Avg Buy:' in line or 'Avg Sell:' in line:
+                                        line_display = f"<div style='background-color: #f8f9fa; padding: 5px; border-radius: 4px; margin: 2px 0;'>{line}</div>"
+                                    else:
+                                        line_display = f"<div style='margin-bottom: 5px;'>{line}</div>"
+                                    
+                                    st.markdown(line_display, unsafe_allow_html=True)
                             else:
                                 st.info("No seller data")
                         
-                        # Mini chart untuk net volume
+                        # Volume analysis dengan lebih banyak info
                         if 'net_volume' in selected_data and pd.notna(selected_data['net_volume']):
                             try:
                                 net_vol = float(selected_data['net_volume'])
-                                st.markdown("### 📊 Volume Analysis")
+                                
+                                # Tambahkan info price jika ada
+                                price_info = ""
+                                if ('avg_buy_price_buyers' in selected_data and 
+                                    'avg_sell_price_buyers' in selected_data and
+                                    pd.notna(selected_data['avg_buy_price_buyers']) and 
+                                    pd.notna(selected_data['avg_sell_price_buyers'])):
+                                    
+                                    avg_buy = float(selected_data['avg_buy_price_buyers'])
+                                    avg_sell = float(selected_data['avg_sell_price_buyers'])
+                                    price_info = f" | Buy: {avg_buy:,.0f} | Sell: {avg_sell:,.0f}"
+                                
+                                st.markdown(f"### 📊 Volume Analysis {price_info}")
                                 
                                 # Simple bar chart
                                 if net_vol != 0:
@@ -1542,13 +1711,54 @@ if df_broker is not None and not df_broker.empty:
                                             </div>
                                         </div>
                                         <div style="text-align: center; margin-top: 5px;">
-                                            <strong>{net_vol:,.0f} lot</strong>
+                                            <strong>{abs(net_vol):,.0f} lot</strong>
+                                            <div style="font-size: 12px; color: #666;">
+                                                Net: {net_vol:,.0f} lot
+                                            </div>
                                         </div>
                                     </div>
                                     """, unsafe_allow_html=True)
                             except:
                                 pass
-
+                
+                # Tampilkan data lengkap dalam expander
+                with st.expander("🔍 View Full Data Structure"):
+                    st.write(f"**Total Columns:** {len(df_final.columns)}")
+                    st.write(f"**Total Rows:** {len(df_final)}")
+                    
+                    # Tampilkan semua kolom
+                    all_columns = df_final.columns.tolist()
+                    st.write("**All Available Columns:**")
+                    
+                    # Group columns by category
+                    price_cols = [col for col in all_columns if 'price' in col.lower() or 'avg' in col.lower()]
+                    broker_cols = [col for col in all_columns if 'buyer' in col.lower() or 'seller' in col.lower() or 'broker' in col.lower()]
+                    trigger_cols = [col for col in all_columns if col not in price_cols + broker_cols]
+                    
+                    col_cat1, col_cat2, col_cat3 = st.columns(3)
+                    
+                    with col_cat1:
+                        st.write("**Trigger Data:**")
+                        for col in sorted(trigger_cols):
+                            st.code(col)
+                    
+                    with col_cat2:
+                        st.write("**Price Data:**")
+                        for col in sorted(price_cols):
+                            st.code(col)
+                    
+                    with col_cat3:
+                        st.write("**Broker Data:**")
+                        for col in sorted(broker_cols):
+                            st.code(col)
+                    
+                    # Tampilkan preview data
+                    st.write("**Data Preview (first 5 rows):**")
+                    st.dataframe(df_final.head(), use_container_width=True)
+            else:
+                st.warning("Tidak ada overlap antara saham trigger dan broker summary.")
+        else:
+            st.info("Menunggu hasil trigger screening...")
 # # ======================================================
 # # PERFORMANCE TRACKING DASHBOARD
 # # ======================================================
