@@ -1,3 +1,8 @@
+"""
+IDX Price Action Screener V3
+Streamlit Dashboard with Value Trx Integration
+"""
+
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -7,18 +12,16 @@ import os
 import pickle
 from datetime import datetime, timedelta
 
-# Import modules baru
+# Import modules
 from engine import build_probability_table_from_ticker, backtest
 from engine_v2 import process_stock, fetch_data, add_indicators
-from risk_manager import RiskManager, PositionSizer
-# from performance_tracker import PerformanceTracker, TradeRecord
 from utils import data_utils, cache_manager, date_utils, format_utils, validation_utils
 
 # ======================================================
 # CONFIG
 # ======================================================
 
-CACHE_VERSION = "v4"  # Updated version
+CACHE_VERSION = "v4"
 CACHE_SCREENING = f"screening_cache_{CACHE_VERSION}.pkl"
 TRIGGER_CACHE = f"trigger_cache_{CACHE_VERSION}.pkl"
 PROB_CACHE = f"prob_cache_{CACHE_VERSION}.pkl"   
@@ -35,19 +38,20 @@ REQUIRED_COLS = {
     "FinalDecision", "RSI", "VOL_BEHAVIOR"
 }
 
-# # Initialize session state for performance tracker
-# if "performance_tracker" not in st.session_state:
-#     st.session_state.performance_tracker = PerformanceTracker()
+# ======================================================
+# PAGE CONFIG
+# ======================================================
+st.set_page_config(
+    layout="wide",
+    page_title="IDX Price Action Screener V3",
+    page_icon="📊"
+)
 
-# ======================================================
-# PAGE
-# ======================================================
-st.set_page_config(layout="wide")
 st.title("📊 IDX Price Action Screener V3")
-st.caption("Daily trend • Minor phase • Volume behavior • Risk Management")
+st.caption("Daily trend • Minor phase • Volume behavior • Value Trx Analysis")
 
 # ======================================================
-# UPDATED HELPERS (using new modules)
+# HELPER FUNCTIONS
 # ======================================================
 
 def color_decision(val):
@@ -145,17 +149,12 @@ def save_backtest_cache(cache):
         pickle.dump(cache, f)
 
 def render_technical_chart(df, kode, suffix="detail"):
-    """
-    Fixed technical chart with proper Plotly properties
-    Volume chart di atas RSI chart
-    """
+    """Render technical chart with proper layout"""
     num_points = len(df)
     
-    # Hitung range tanggal
-    date_range = pd.date_range(start=df.index[0], end=df.index[-1], periods=num_points)
-    # Atur padding untuk memperlebar bar
+    # Calculate bar width
     if num_points <= 50:
-        bar_padding = 0.8  # Lebar untuk data sedikit
+        bar_padding = 0.8
     elif num_points <= 100:
         bar_padding = 0.7
     elif num_points <= 200:
@@ -163,30 +162,28 @@ def render_technical_chart(df, kode, suffix="detail"):
     else:
         bar_padding = 0.5
     
-    # Hitung lebar bar dalam hari
     if num_points > 1:
         avg_day_gap = (df.index[-1] - df.index[0]).days / (num_points - 1)
-        bar_width_ms = avg_day_gap * 24 * 3600 * 1000 * bar_padding  # dalam milidetik
+        bar_width_ms = avg_day_gap * 24 * 3600 * 1000 * bar_padding
     else:
         bar_width_ms = 24 * 3600 * 1000
 
+    # Create subplots
     fig = make_subplots(
         rows=4,
         cols=1,
         shared_xaxes=True,
         vertical_spacing=0.03,
-        row_heights=[0.45, 0.25, 0.15, 0.15],  # Diubah: Volume lebih besar, RSI dan MACD lebih kecil
+        row_heights=[0.45, 0.25, 0.15, 0.15],
         subplot_titles=(
             f"{kode} - Price & EMAs",
-            "Volume & Volume MA20",  # Pindah ke row 2
-            "RSI (14)",  # Pindah ke row 3
-            "MACD"  # Pindah ke row 4
+            "Volume & Volume MA20",
+            "RSI (14)",
+            "MACD"
         )
     )
 
-    # =========================
-    # 1. PRICE CHART (row 1)
-    # =========================
+    # 1. PRICE CHART
     fig.add_trace(
         go.Candlestick(
             x=df.index,
@@ -221,12 +218,9 @@ def render_technical_chart(df, kode, suffix="detail"):
                 row=1, col=1
             )
 
-    # =========================
-    # 2. VOLUME CHART (row 2) - DIPINDAH KE ATAS RSI
-    # =========================
-    
+    # 2. VOLUME CHART
     if "Volume" in df.columns:
-        # Hitung volume dalam juta atau ribu
+        # Calculate volume unit
         volume_max = df["Volume"].max()
         if volume_max >= 1_000_000_000:
             volume_divisor = 1_000_000_000
@@ -238,7 +232,7 @@ def render_technical_chart(df, kode, suffix="detail"):
             volume_divisor = 1_000
             volume_unit = "K"
         
-        # Warna volume
+        # Volume colors
         colors = []
         for i in range(len(df)):
             if i == 0:
@@ -246,7 +240,7 @@ def render_technical_chart(df, kode, suffix="detail"):
             else:
                 colors.append('green' if df["Close"].iloc[i] > df["Close"].iloc[i-1] else 'red')
         
-        # **TRICK 1: Gunakan go.Bar dengan width yang dikonversi ke milidetik**
+        # Volume bars
         fig.add_trace(
             go.Bar(
                 x=df.index,
@@ -254,22 +248,13 @@ def render_technical_chart(df, kode, suffix="detail"):
                 name=f"Volume ({volume_unit})",
                 marker_color=colors,
                 opacity=0.8,
-                width=bar_width_ms,  # **Ini kuncinya!**
+                width=bar_width_ms,
                 marker_line_width=0,
-                offset=0  # Pastikan tidak ada offset
+                offset=0
             ),
             row=2, col=1
         )
         
-        # **TRICK 2: Atur bargap dan bargroupgap di layout**
-        fig.update_layout(
-            bargap=0.1,  # Gap antar bar group
-            bargroupgap=0.05  # Gap antar bar dalam group yang sama
-        )
-        
-        # **TRICK 3: Atur barmode untuk menghindari stacking**
-        fig.update_layout(barmode='overlay')
-
         # Volume MA20
         if "VOL_MA20" in df.columns:
             fig.add_trace(
@@ -280,12 +265,10 @@ def render_technical_chart(df, kode, suffix="detail"):
                     name=f"Vol MA20 ({volume_unit})",
                     line=dict(color="orange", width=2)
                 ),
-                row=2, col=1  # Diubah dari row 4 ke row 2
+                row=2, col=1
             )
 
-    # =========================
-    # 3. RSI CHART (row 3) - DIPINDAH KE BAWAH VOLUME
-    # =========================
+    # 3. RSI CHART
     if "RSI" in df.columns:
         fig.add_trace(
             go.Scatter(
@@ -295,21 +278,19 @@ def render_technical_chart(df, kode, suffix="detail"):
                 name="RSI",
                 line=dict(width=1.5, color="purple")
             ),
-            row=3, col=1  # Diubah dari row 2 ke row 3
+            row=3, col=1
         )
         
         # RSI levels
-        fig.add_hrect(y0=70, y1=100, line_width=0, fillcolor="red", opacity=0.1, row=3, col=1)  # Diubah row
-        fig.add_hrect(y0=30, y1=70, line_width=0, fillcolor="gray", opacity=0.05, row=3, col=1)  # Diubah row
-        fig.add_hrect(y0=0, y1=30, line_width=0, fillcolor="green", opacity=0.1, row=3, col=1)  # Diubah row
+        fig.add_hrect(y0=70, y1=100, line_width=0, fillcolor="red", opacity=0.1, row=3, col=1)
+        fig.add_hrect(y0=30, y1=70, line_width=0, fillcolor="gray", opacity=0.05, row=3, col=1)
+        fig.add_hrect(y0=0, y1=30, line_width=0, fillcolor="green", opacity=0.1, row=3, col=1)
         
-        fig.add_hline(y=70, line_dash="dash", line_color="red", row=3, col=1)  # Diubah row
-        fig.add_hline(y=30, line_dash="dash", line_color="green", row=3, col=1)  # Diubah row
-        fig.add_hline(y=50, line_dash="dot", line_color="gray", opacity=0.5, row=3, col=1)  # Diubah row
+        fig.add_hline(y=70, line_dash="dash", line_color="red", row=3, col=1)
+        fig.add_hline(y=30, line_dash="dash", line_color="green", row=3, col=1)
+        fig.add_hline(y=50, line_dash="dot", line_color="gray", opacity=0.5, row=3, col=1)
 
-    # =========================
-    # 4. MACD CHART (row 4)
-    # =========================
+    # 4. MACD CHART
     if "MACD" in df.columns and "MACD_Signal" in df.columns:
         # MACD Line
         fig.add_trace(
@@ -351,9 +332,7 @@ def render_technical_chart(df, kode, suffix="detail"):
         
         fig.add_hline(y=0, line_color="black", line_width=1, row=4, col=1)
 
-    # =========================
-    # LAYOUT & STYLING - FIXED
-    # =========================
+    # Layout
     fig.update_layout(
         height=1000,
         showlegend=True,
@@ -367,47 +346,29 @@ def render_technical_chart(df, kode, suffix="detail"):
         xaxis_rangeslider_visible=False,
         margin=dict(t=60, b=40, l=60, r=60),
         template="plotly_white",
-        hovermode="x unified"
+        hovermode="x unified",
+        bargap=0.1,
+        bargroupgap=0.05,
+        barmode='overlay'
     )
     
-    # Update axis titles
-    fig.update_yaxes(
-        title=dict(text="Price (IDR)", font=dict(size=12)),
-        row=1, col=1,
-        tickformat=","
-    )
+    # Update axes
+    fig.update_yaxes(title=dict(text="Price (IDR)", font=dict(size=12)), row=1, col=1, tickformat=",")
     
-    # Volume y-axis (row 2)
     if "Volume" in df.columns:
         volume_title = f"Volume ({volume_unit})"
         fig.update_yaxes(
             title=dict(text=volume_title, font=dict(size=12)),
-            row=2, col=1,  # Diubah dari row 4 ke row 2
+            row=2, col=1,
             tickformat=","
         )
     
-    # RSI y-axis (row 3)
-    fig.update_yaxes(
-        title=dict(text="RSI", font=dict(size=12)),
-        row=3, col=1,  # Diubah dari row 2 ke row 3
-        range=[0, 100]
-    )
-    
-    # MACD y-axis (row 4)
-    fig.update_yaxes(
-        title=dict(text="MACD", font=dict(size=12)),
-        row=4, col=1
-    )
-    
-    # X-axis for MACD chart (row 4)
-    fig.update_xaxes(
-        title=dict(text="Date", font=dict(size=12)),
-        row=4, col=1
-    )
-    
-    # Handle secondary axis untuk volume ratio (jika ada)
+    fig.update_yaxes(title=dict(text="RSI", font=dict(size=12)), row=3, col=1, range=[0, 100])
+    fig.update_yaxes(title=dict(text="MACD", font=dict(size=12)), row=4, col=1)
+    fig.update_xaxes(title=dict(text="Date", font=dict(size=12)), row=4, col=1)
+
+    # Volume ratio if available
     if "VOL_RATIO" in df.columns and "Volume" in df.columns:
-        # Buat trace terpisah untuk volume ratio
         fig.add_trace(
             go.Scatter(
                 x=df.index,
@@ -417,14 +378,13 @@ def render_technical_chart(df, kode, suffix="detail"):
                 line=dict(color="purple", width=1, dash="dash"),
                 yaxis="y5"
             ),
-            row=2, col=1  # Sekarang di row 2
+            row=2, col=1
         )
         
-        # Update layout untuk secondary axis
         fig.update_layout(
             yaxis5=dict(
                 title="Volume Ratio",
-                overlaying="y2",  # Diubah dari y4 ke y2
+                overlaying="y2",
                 side="right",
                 range=[0, max(3, df["VOL_RATIO"].max() * 1.1)],
                 showgrid=False,
@@ -432,15 +392,11 @@ def render_technical_chart(df, kode, suffix="detail"):
             )
         )
         
-        # Tambah horizontal lines di axis yang benar
-        fig.add_hline(y=1.0, line_dash="dot", line_color="gray", 
-                     line_width=1, row=2, col=1, yref="y5")
-        fig.add_hline(y=1.5, line_dash="dash", line_color="orange", 
-                     line_width=1, row=2, col=1, yref="y5")
-        fig.add_hline(y=2.0, line_dash="dash", line_color="red", 
-                     line_width=1, row=2, col=1, yref="y5")
+        fig.add_hline(y=1.0, line_dash="dot", line_color="gray", line_width=1, row=2, col=1, yref="y5")
+        fig.add_hline(y=1.5, line_dash="dash", line_color="orange", line_width=1, row=2, col=1, yref="y5")
+        fig.add_hline(y=2.0, line_dash="dash", line_color="red", line_width=1, row=2, col=1, yref="y5")
 
-    # Volume statistics annotation (sekarang di row 2)
+    # Volume stats annotation
     if "Volume" in df.columns:
         avg_volume = df["Volume"].mean() / volume_divisor
         current_volume = df["Volume"].iloc[-1] / volume_divisor
@@ -460,31 +416,6 @@ def render_technical_chart(df, kode, suffix="detail"):
         )
 
     st.plotly_chart(fig, use_container_width=True, key=f"chart_{kode}_{suffix}")
-    
-    # Volume statistics table
-    if "Volume" in df.columns and "VOL_MA20" in df.columns:
-        with st.expander("📊 Volume Statistics"):
-            col1, col2, col3, col4 = st.columns(4)
-            
-            with col1:
-                st.metric("Today's Volume", 
-                         f"{df['Volume'].iloc[-1]/1e6:.1f}M",
-                         f"{(df['Volume'].iloc[-1]/df['VOL_MA20'].iloc[-1]-1)*100:.1f}%")
-            
-            with col2:
-                st.metric("20-day Avg Volume", 
-                         f"{df['VOL_MA20'].iloc[-1]/1e6:.1f}M",
-                         "")
-            
-            with col3:
-                volume_ratio = df['Volume'].iloc[-1] / df['VOL_MA20'].iloc[-1] if df['VOL_MA20'].iloc[-1] > 0 else 0
-                st.metric("Volume Ratio", 
-                         f"{volume_ratio:.2f}",
-                         "High" if volume_ratio > 1.5 else "Normal" if volume_ratio > 0.8 else "Low")
-            
-            with col4:
-                volume_trend = "Rising" if df['Volume'].iloc[-1] > df['Volume'].iloc[-5:-1].mean() else "Falling"
-                st.metric("Volume Trend", volume_trend, "")
 
 def retry_single_stock(kode):
     """Retry processing a single stock"""
@@ -494,289 +425,24 @@ def retry_single_stock(kode):
         df = df[df["Kode"] != kode]
         save_cache(df, CACHE_SCREENING)
     
-    # Process stock with force refresh
-    return process_stock(kode, use_cache=False)
+    # Process stock with force refresh - SELALU include Value Trx
+    return process_stock(kode, use_cache=False, include_value_trx=True)
 
 # ======================================================
-# NEW: RISK MANAGEMENT SECTION
+# BROKER SUMMARY HELPER FUNCTIONS
 # ======================================================
-def render_risk_management_calculator(kode, current_price):
-    """Render risk management calculator"""
-    st.subheader("🎯 Risk Management Calculator")
-    
-    with st.expander("Configure Risk Parameters", expanded=True):
-        col1, col2, col3, col4 = st.columns(4)
-        
-        with col1:
-            capital = st.number_input(
-                "Trading Capital (IDR)",
-                min_value=1000000,
-                value=10000000,
-                step=1000000,
-                key=f"capital_{kode}"
-            )
-        
-        with col2:
-            risk_per_trade = st.slider(
-                "Risk per Trade (%)",
-                min_value=0.5,
-                max_value=5.0,
-                value=2.0,
-                step=0.5,
-                key=f"risk_{kode}"
-            )
-        
-        with col3:
-            stop_loss_pct = st.slider(
-                "Stop Loss (%)",
-                min_value=1.0,
-                max_value=10.0,
-                value=5.0,
-                step=0.5,
-                key=f"sl_{kode}"
-            )
-        
-        with col4:
-            risk_reward_ratio = st.slider(
-                "Risk:Reward Ratio",
-                min_value=1.0,
-                max_value=5.0,
-                value=2.0,
-                step=0.5,
-                key=f"rr_{kode}"
-            )
-    
-    if st.button("Calculate Position", key=f"calc_pos_{kode}"):
-        try:
-            # Calculate position size
-            position_size = RiskManager.calculate_position_size(
-                capital, risk_per_trade, stop_loss_pct
-            )
-            
-            # Calculate number of shares
-            shares = int(position_size / current_price)
-            investment = shares * current_price
-            
-            # Calculate stop loss price
-            stop_loss_price = RiskManager.calculate_stop_loss_price(
-                current_price, stop_loss_pct, "long"
-            )
-            
-            # Calculate target price
-            target_price = RiskManager.calculate_target_price(
-                current_price, stop_loss_pct, risk_reward_ratio, "long"
-            )
-            
-            # Calculate risk metrics
-            potential_loss = investment - (shares * stop_loss_price)
-            potential_profit = (shares * target_price) - investment
-            rr_actual = RiskManager.calculate_risk_reward_ratio(
-                current_price, stop_loss_price, target_price, "long"
-            )
-            
-            # Display results
-            st.success("**Position Calculation Results:**")
-            
-            col1, col2, col3 = st.columns(3)
-            
-            with col1:
-                st.metric("Position Size", f"IDR {position_size:,.0f}")
-                st.metric("Shares", f"{shares:,}")
-                st.metric("Investment", f"IDR {investment:,.0f}")
-            
-            with col2:
-                st.metric("Stop Loss", f"IDR {stop_loss_price:,.0f}")
-                st.metric("Target", f"IDR {target_price:,.0f}")
-                st.metric("Stop Loss %", f"{stop_loss_pct}%")
-            
-            with col3:
-                st.metric("Potential Loss", f"IDR {potential_loss:,.0f}")
-                st.metric("Potential Profit", f"IDR {potential_profit:,.0f}")
-                st.metric("Risk:Reward", f"1:{rr_actual:.1f}")
-            
-            # Risk summary
-            st.info(f"""
-            **Risk Summary for {kode}:**
-            - You're risking **IDR {potential_loss:,.0f}** ({risk_per_trade}% of capital)
-            - Potential reward: **IDR {potential_profit:,.0f}**
-            - Stop loss hit: {((current_price - stop_loss_price) / current_price * 100):.1f}% drop needed
-            - Target hit: {((target_price - current_price) / current_price * 100):.1f}% gain needed
-            """)
-            
-        except Exception as e:
-            st.error(f"Error in risk calculation: {e}")
-
-# ======================================================
-# NEW: PERFORMANCE TRACKING SECTION
-# ======================================================
-# def render_performance_tracking():
-#     """Render performance tracking dashboard"""
-#     st.subheader("📊 Performance Tracking")
-    
-#     tracker = st.session_state.performance_tracker
-#     summary = tracker.get_summary()
-    
-#     if summary:
-#         # Key metrics
-#         col1, col2, col3, col4 = st.columns(4)
-        
-#         with col1:
-#             st.metric("Total Trades", summary['total_trades'])
-#             st.metric("Win Rate", f"{summary['win_rate']:.1f}%")
-        
-#         with col2:
-#             st.metric("Total P&L", format_utils.format_currency(summary['total_net_pnl']))
-#             st.metric("Total Return", f"{summary['total_return_pct']:.1f}%")
-        
-#         with col3:
-#             st.metric("Profit Factor", f"{summary['profit_factor']:.2f}")
-#             st.metric("Max Drawdown", f"{summary['max_drawdown']:.1f}%")
-        
-#         with col4:
-#             st.metric("Sharpe Ratio", f"{summary['sharpe_ratio']:.2f}")
-#             st.metric("Avg Trade", format_utils.format_currency(summary['avg_win']))
-        
-#         # Equity Curve Chart
-#         if tracker.equity_curve and len(tracker.equity_curve) > 1:
-#             fig_eq = go.Figure()
-#             fig_eq.add_trace(go.Scatter(
-#                 x=list(range(len(tracker.equity_curve))),
-#                 y=tracker.equity_curve,
-#                 mode='lines',
-#                 name='Equity Curve',
-#                 line=dict(color='green', width=2),
-#                 fill='tozeroy',
-#                 fillcolor='rgba(0, 255, 0, 0.1)'
-#             ))
-            
-#             # Add drawdown area
-#             equity_series = pd.Series(tracker.equity_curve)
-#             rolling_max = equity_series.expanding().max()
-#             drawdown = (equity_series - rolling_max) / rolling_max * 100
-            
-#             fig_eq.add_trace(go.Scatter(
-#                 x=list(range(len(drawdown))),
-#                 y=drawdown,
-#                 mode='lines',
-#                 name='Drawdown %',
-#                 line=dict(color='red', width=1),
-#                 yaxis='y2',
-#                 fill='tozeroy',
-#                 fillcolor='rgba(255, 0, 0, 0.1)'
-#             ))
-            
-#             fig_eq.update_layout(
-#                 title="Equity Curve & Drawdown",
-#                 xaxis_title="Trade Number",
-#                 yaxis_title="Capital (IDR)",
-#                 yaxis2=dict(
-#                     title="Drawdown %",
-#                     titlefont=dict(color="red"),
-#                     tickfont=dict(color="red"),
-#                     overlaying="y",
-#                     side="right"
-#                 ),
-#                 height=400,
-#                 showlegend=True
-#             )
-            
-#             st.plotly_chart(fig_eq, use_container_width=True)
-        
-#         # Recent Trades Table
-#         st.subheader("Recent Trades")
-#         trades_df = tracker.get_trades_df()
-#         if not trades_df.empty:
-#             # Format the dataframe for display
-#             display_cols = ['symbol', 'entry_time', 'exit_time', 'entry_price', 
-#                           'exit_price', 'quantity', 'net_pnl', 'net_pnl_pct', 'win']
-            
-#             if all(col in trades_df.columns for col in display_cols):
-#                 display_df = trades_df[display_cols].copy()
-#                 display_df['entry_time'] = pd.to_datetime(display_df['entry_time']).dt.strftime('%Y-%m-%d %H:%M')
-#                 display_df['exit_time'] = pd.to_datetime(display_df['exit_time']).dt.strftime('%Y-%m-%d %H:%M')
-#                 display_df['net_pnl'] = display_df['net_pnl'].apply(lambda x: format_utils.format_currency(x))
-#                 display_df['net_pnl_pct'] = display_df['net_pnl_pct'].apply(lambda x: f"{x:.2f}%")
-#                 display_df['win'] = display_df['win'].apply(lambda x: '✅' if x else '❌')
-                
-#                 st.dataframe(display_df.sort_values('exit_time', ascending=False), 
-#                            use_container_width=True)
-    
-#     # Manual Trade Entry
-#     with st.expander("➕ Add Manual Trade"):
-#         col1, col2 = st.columns(2)
-        
-#         with col1:
-#             symbol_trade = st.text_input("Symbol", key="trade_symbol")
-#             entry_price = st.number_input("Entry Price", min_value=0.0, key="entry_price")
-#             exit_price = st.number_input("Exit Price", min_value=0.0, key="exit_price")
-        
-#         with col2:
-#             quantity = st.number_input("Quantity", min_value=1, key="trade_qty")
-#             direction = st.selectbox("Direction", ["long", "short"], key="trade_dir")
-        
-#         col3, col4 = st.columns(2)
-#         with col3:
-#             entry_date = st.date_input("Entry Date", key="entry_date")
-#             entry_time = st.time_input("Entry Time", key="entry_time")
-        
-#         with col4:
-#             exit_date = st.date_input("Exit Date", key="exit_date")
-#             exit_time = st.time_input("Exit Time", key="exit_time")
-        
-#         if st.button("Add Trade", key="add_trade"):
-#             try:
-#                 # Combine date and time
-#                 entry_datetime = datetime.combine(entry_date, entry_time)
-#                 exit_datetime = datetime.combine(exit_date, exit_time)
-                
-#                 trade = tracker.add_trade(
-#                     symbol=symbol_trade,
-#                     entry_price=entry_price,
-#                     exit_price=exit_price,
-#                     entry_time=entry_datetime,
-#                     exit_time=exit_datetime,
-#                     quantity=quantity,
-#                     direction=direction
-#                 )
-                
-#                 st.success(f"✅ Trade added! P&L: {format_utils.format_currency(trade['net_pnl'])} ({trade['net_pnl_pct']:.2f}%)")
-#                 st.rerun()
-                
-#             except Exception as e:
-#                 st.error(f"Error adding trade: {e}")
-    
-#     # Export options
-#     if st.button("📊 Export Performance Report"):
-#         tracker.export_report(format='excel')
-#         st.success("Performance report exported to performance_data/ folder")
-
-# ======================================================
-# HELPER FUNCTIONS FOR BROKER SUMMARY
-# ======================================================
-def find_latest_cache(trade_date, max_back=7):
-    """
-    Cari file cache mundur dari trade_date sampai max_back hari.
-    """
-    dt = datetime.strptime(trade_date, "%Y-%m-%d")
-    for i in range(max_back+1):
-        check_date = (dt - timedelta(days=i)).strftime("%Y-%m-%d")
-        path = f"cache/trigger_result_{check_date}.pkl"
-        if os.path.exists(path):
-            return path, check_date
-    return None, None
-
 def get_trade_date(today=None):
+    """Get last trading day"""
     if today is None:
         today = datetime.today()
-    # mundur ke hari kerja terakhir kalau weekend
-    while today.weekday() >= 5:  # 5 = Sabtu, 6 = Minggu
+    while today.weekday() >= 5:
         today -= timedelta(days=1)
     return today.strftime("%Y-%m-%d")
 
 def save_trigger_cache(df, trade_date=None):
+    """Save trigger cache"""
     if trade_date is None:
         trade_date = get_trade_date()
-    # pastikan folder cache ada
     os.makedirs("cache", exist_ok=True)
     path = f"cache/trigger_result_{trade_date}.pkl"
     with open(path, "wb") as f:
@@ -794,20 +460,14 @@ def load_broker_summary(trade_date, max_back=7):
             try:
                 df = pd.read_csv(path)
                 if not df.empty:
-                    # Cek kolom yang ada
-                    st.info(f"Loaded broker summary from {check_date}")
-                    # st.write(f"File: {path}")
-                    # st.write(f"Columns: {df.columns.tolist()}")
-                    # st.write(f"Rows: {len(df)}")
                     return df, check_date
             except Exception as e:
-                st.error(f"Error loading {path}: {e}")
                 continue
     
-    st.warning(f"Tidak ditemukan broker summary file untuk tanggal {trade_date} (mundur {max_back} hari)")
     return None, None
 
 def load_trigger_cache_pickle(trade_date, max_back=7):
+    """Load trigger cache with fallback"""
     dt = datetime.strptime(trade_date, "%Y-%m-%d")
     for i in range(max_back + 1):
         check_date = (dt - timedelta(days=i)).strftime("%Y-%m-%d")
@@ -818,9 +478,7 @@ def load_trigger_cache_pickle(trade_date, max_back=7):
     return None, None
 
 def show_status(name, trade_date, used_date, df):
-    """
-    Tampilkan status data berdasarkan tanggal yang dipakai.
-    """
+    """Show data status"""
     if df is None or (isinstance(df, pd.DataFrame) and df.empty):
         st.info(f"❌ {name} tidak tersedia untuk hari ini maupun fallback")
         return False
@@ -831,100 +489,87 @@ def show_status(name, trade_date, used_date, df):
         st.success(f"✅ {name} {trade_date} sudah update")
         return True
 
-def load_trigger_cache():
-    if os.path.exists(TRIGGER_CACHE):
-        try:
-            return pickle.load(open(TRIGGER_CACHE, "rb"))
-        except Exception:
-            return pd.DataFrame()
-    return pd.DataFrame()
-
 # ======================================================
-# LOAD SAHAM
+# LOAD STOCK LIST
 # ======================================================
-saham_df = pd.read_excel(EXCEL_FILE)
-codes = saham_df[KODE_COLUMN].dropna().unique().tolist()
+@st.cache_data
+def load_stock_list():
+    """Load stock list from Excel"""
+    try:
+        saham_df = pd.read_excel(EXCEL_FILE)
+        codes = saham_df[KODE_COLUMN].dropna().unique().tolist()
+        return codes
+    except Exception as e:
+        st.error(f"Error loading stock list: {e}")
+        return []
 
+codes = load_stock_list()
 cached_df = load_cache_safe(CACHE_SCREENING)
 
 # ======================================================
-# SIDEBAR CONFIGURATION
+# TOP CONFIGURATION BAR
 # ======================================================
-with st.sidebar:
-    st.header("⚙️ Configuration")
-    
-    # Cache management
-    st.subheader("Cache Management")
-    if st.button("🗑️ Clear All Cache", use_container_width=True):
+# Configuration bar at the top
+st.markdown("---")
+config_col1, config_col2 = st.columns([1, 3])
+
+with config_col1:
+    if st.button("🗑️ Clear All Cache", use_container_width=True, type="primary"):
         clear_cache()
         st.rerun()
-    
-    # Performance tracking
-    # st.subheader("Performance Tracking")
-    # tracker = st.session_state.performance_tracker
-    # st.metric("Current Capital", format_utils.format_currency(tracker.current_capital))
-    # st.metric("Total Trades", tracker.get_summary().get('total_trades', 0))
-    
-    # if st.button("Reset Performance", use_container_width=True):
-    #     tracker.reset()
-    #     st.success("Performance tracker reset")
-    #     st.rerun()
-    
-    # Risk parameters
-    st.subheader("Default Risk Parameters")
-    default_capital = st.number_input("Default Capital (IDR)", 
-                                     value=10000000,
-                                     min_value=1000000,
-                                     step=1000000)
-    default_risk = st.slider("Default Risk %", 0.5, 5.0, 2.0, 0.5)
-    
-    # System info
-    st.subheader("System Info")
-    st.text(f"Version: {CACHE_VERSION}")
-    st.text(f"Today: {TODAY}")
-    st.text(f"Stocks in list: {len(codes)}")
+
+with config_col2:
+    # Cache info
+    cache_age = "N/A"
+    if os.path.exists(CACHE_SCREENING):
+        mod_time = os.path.getmtime(CACHE_SCREENING)
+        cache_age = (datetime.now() - datetime.fromtimestamp(mod_time)).seconds // 60
+    st.caption(f"📅 {TODAY} | 📊 {len(codes)} stocks | 💾 Cache: {cache_age} min")
 
 # ======================================================
 # MAIN SCREENING SECTION
 # ======================================================
 st.header("🚀 Stock Screening")
 
-col1, col2 = st.columns([1, 3])
-with col1:
-    if st.button("🗑️ Clear Screening Cache", use_container_width=True):
-        if os.path.exists(CACHE_SCREENING):
-            os.remove(CACHE_SCREENING)
-        st.session_state["scan"] = pd.DataFrame()
-        st.success("Screening cache cleared")
-        st.rerun()
-
-with col2:
-    if st.button("🚀 Run Full Screening", use_container_width=True, type="primary"):
-        results = []
-        progress = st.progress(0)
-        status = st.empty()
+# Di bagian run screening:
+if st.button("🚀 Run Full Screening", use_container_width=True, type="primary"):
+    results = []
+    progress = st.progress(0)
+    status = st.empty()
+    error_log = []
+    
+    with ThreadPoolExecutor(max_workers=2) as ex:  # Kurangi workers untuk stabil
+        # SELALU include Value Trx
+        futures = {ex.submit(process_stock, k, use_cache=True, include_value_trx=True): k for k in codes}
+        done = 0
+        total = len(codes)
         
-        with ThreadPoolExecutor(max_workers=MAX_WORKERS) as ex:
-            futures = {ex.submit(process_stock, k, use_cache=True): k for k in codes}
-            done = 0
-            total = len(codes)
+        for f in as_completed(futures):
+            kode = futures[f]
+            try:
+                r = f.result(timeout=30)  # Timeout 30 detik
+                if r and "Kode" in r and "Price" in r:
+                    r["ProcessTime"] = pd.Timestamp.now()
+                    results.append(r)
+                else:
+                    error_log.append(f"{kode}: No valid result")
+            except Exception as e:
+                error_log.append(f"{kode}: {str(e)}")
+                st.error(f"Error {kode}: {e}")
             
-            for f in as_completed(futures):
-                kode = futures[f]
-                try:
-                    r = f.result()
-                    if r and "Kode" in r and "Price" in r:
-                        r["ProcessTime"] = pd.Timestamp.now()
-                        results.append(r)
-                except Exception as e:
-                    st.error(f"Error {kode}: {e}")
-                
-                done += 1
-                progress.progress(done / total)
-                status.text(f"Processed {done}/{total} saham")
-        
-        df_new = pd.DataFrame(results)
-        
+            done += 1
+            progress.progress(done / total)
+            status.text(f"Processed {done}/{total} saham ({len(error_log)} errors)")
+    
+    # Tampilkan error log jika ada
+    if error_log:
+        with st.expander("⚠️ Error Log"):
+            for error in error_log:
+                st.text(error)
+    
+    df_new = pd.DataFrame(results)
+    
+    if not df_new.empty:
         # Combine with existing cache
         if not cached_df.empty:
             df_scan = pd.concat([cached_df, df_new], ignore_index=True)
@@ -936,7 +581,16 @@ with col2:
         save_cache(df_scan, CACHE_SCREENING)
         st.session_state["scan"] = df_scan
         st.success(f"✅ Screening selesai: {len(df_scan)} saham valid")
-        st.rerun()
+        st.info(f"📊 Value Trx calculated for {len([r for r in results if 'ValueTrx' in r])} stocks")
+        
+        # Tampilkan statistik Value Trx
+        if "ValueTrx" in df_scan.columns:
+            valid_value_trx = df_scan[df_scan["ValueTrx"] > 0]
+            st.info(f"📈 Valid Value Trx: {len(valid_value_trx)} stocks")
+    else:
+        st.warning("Tidak ada hasil screening yang valid")
+    
+    st.rerun()
 
 # ======================================================
 # GUARD - Check if screening results exist
@@ -955,8 +609,8 @@ df = st.session_state["scan"].copy()
 # ======================================================
 st.markdown("### 🔎 Filter Results")
 
-# Quick filters
-col1, col2, col3, col4 = st.columns(4)
+# Quick filters - HAPUS RSI FILTER
+col1, col2, col3 = st.columns(3)  # Hanya 3 kolom, hapus RSI
 with col1:
     show_only_strong = st.checkbox("Show STRONG Only", value=True)
     if show_only_strong:
@@ -970,10 +624,6 @@ with col2:
 with col3:
     min_confidence = st.slider("Min Confidence %", 0, 100, 50)
     df = df[df["MinorConfidence%"] >= min_confidence]
-
-with col4:
-    max_rsi = st.slider("Max RSI", 30, 100, 80)
-    df = df[df["RSI"] <= max_rsi]
 
 # Advanced filters
 with st.expander("Advanced Filters"):
@@ -1009,9 +659,70 @@ with st.expander("Advanced Filters"):
         candle_filter = st.multiselect("Candle Type", df["Latest_Candle"].unique())
         if candle_filter:
             df = df[df["Latest_Candle"].isin(candle_filter)]
+    
+    # Value Trx Filters - FIXED NO ERROR
+    st.markdown("---")
+    st.subheader("💰 Value Trx Filters")
+    
+    value_col1, value_col2 = st.columns(2)
+    
+    with value_col1:
+        if "ValueTrx" in df.columns and not df.empty:
+            # Cari nilai maksimum yang valid
+            valid_values = df["ValueTrx"][df["ValueTrx"] > 0]
+            if not valid_values.empty:
+                max_val = float(valid_values.max())
+                min_val = float(valid_values.min())
+                
+                if max_val > min_val:  # Pastikan ada range
+                    # Convert to billions untuk display
+                    max_val_b = max_val / 1_000_000_000
+                    min_val_b = min_val / 1_000_000_000
+                    
+                    min_value_b = st.slider(
+                        "Min Value Trx (Billion)", 
+                        min_value=0.0,
+                        max_value=round(max_val_b, 1),
+                        value=0.0,
+                        step=0.1
+                    )
+                    
+                    # Convert back to actual value
+                    min_value_trx = min_value_b * 1_000_000_000
+                    df = df[df["ValueTrx"] >= min_value_trx]
+                else:
+                    st.info(f"All Value Trx: Rp {max_val:,.0f}")
+            else:
+                st.info("No Value Trx data available")
+    
+    with value_col2:
+        if "Liquidity_Score" in df.columns:
+            liquidity_filter = st.multiselect(
+                "Liquidity Score",
+                df["Liquidity_Score"].unique() if not df.empty else []
+            )
+            if liquidity_filter:
+                df = df[df["Liquidity_Score"].isin(liquidity_filter)]
+
+# Sorting options
+sort_col1, sort_col2 = st.columns([2, 1])
+
+with sort_col1:
+    sort_options = ["Kode", "Price", "PriceChange%", "MinorConfidence%", "FinalDecision"]
+    if "ValueTrx" in df.columns:
+        sort_options.append("ValueTrx")
+    
+    sort_by = st.selectbox("Sort by:", sort_options, index=0)
+
+with sort_col2:
+    sort_order = st.selectbox("Order:", ["Ascending", "Descending"], index=1)
+
+# Apply sorting
+if not df.empty and sort_by in df.columns:
+    df = df.sort_values(sort_by, ascending=(sort_order == "Ascending"))
 
 # ======================================================
-# RESULTS TABLE
+# RESULTS TABLE - SIMPLIFIED
 # ======================================================
 st.subheader(f"📋 Screening Results ({len(df)} saham)")
 
@@ -1020,26 +731,55 @@ display_df = df.copy()
 if not display_df.empty:
     # Format numeric columns
     display_df["Price"] = display_df["Price"].apply(lambda x: format_utils.format_currency(x))
-    display_df["Volume"] = display_df["Volume"].apply(lambda x: f"{x/1e6:.1f}M" if x >= 1e6 else f"{x/1e3:.0f}K")
+    
+    # Format Volume
+    if "Volume" in display_df.columns:
+        display_df["Volume_Display"] = display_df["Volume"].apply(
+            lambda x: f"{x/1e6:.1f}M" if x >= 1e6 else f"{x/1e3:.0f}K"
+        )
+    
     display_df["RSI"] = display_df["RSI"].apply(lambda x: f"{x:.1f}")
     
-    # Color code based on decision
-    def color_decision(val):
-        if val == "ENTRY_READY":
-            return "background-color: #d4edda; color: #155724;"
-        elif val == "SETUP_PENDING":
-            return "background-color: #fff3cd; color: #856404;"
-        elif val == "WAIT":
-            return "background-color: #f8d7da; color: #721c24;"
-        return ""
+    # Format Value Trx - SIMPLE
+    if "ValueTrx" in display_df.columns:
+        display_df["ValueTrx_Display"] = display_df["ValueTrx"].apply(
+            lambda x: f"Rp {x:,.0f}" if pd.notna(x) and x > 0 else "-"
+        )
     
     # Select columns to display
     display_cols = ["Kode", "Price", "PriceChange%", "MajorTrend", "MinorPhase", 
-                   "MinorConfidence%", "RSI", "VOL_BEHAVIOR","Volume" ,"Latest_Candle", "FinalDecision"]
+                   "MinorConfidence%", "RSI", "Volume_Display"]
     
+    # Add VOL_BEHAVIOR
+    if "VOL_BEHAVIOR" in display_df.columns:
+        display_cols.append("VOL_BEHAVIOR")
+    
+    # Add Value Trx
+    if "ValueTrx_Display" in display_df.columns:
+        display_cols.append("ValueTrx_Display")
+    
+    # Add remaining columns
+    display_cols.extend(["Latest_Candle", "FinalDecision"])
+    
+    # Filter only existing columns
+    display_cols = [col for col in display_cols if col in display_df.columns]
     display_df = display_df[display_cols]
+    
+    # Rename columns for better display
+    column_rename = {
+        "ValueTrx_Display": "Value Trx",
+        "PriceChange%": "Chg %",
+        "MinorConfidence%": "Conf %",
+        "VOL_BEHAVIOR": "Vol Behavior",
+        "Volume_Display": "Volume",
+        "Latest_Candle": "Candle"
+    }
+    
+    # Apply rename
+    rename_dict = {k: v for k, v in column_rename.items() if k in display_df.columns}
+    display_df = display_df.rename(columns=rename_dict)
 
-# Display interactive dataframe
+# Display table
 try:
     event = st.dataframe(
         display_df.style.applymap(color_decision, subset=['FinalDecision']),
@@ -1048,10 +788,6 @@ try:
         on_select="rerun"
     )
 except Exception as e:
-    st.error(f"Error dalam styling DataFrame: {e}")
-    # st.write("Kolom yang tersedia:", display_df.columns.tolist())
-    
-    # Tampilkan DataFrame tanpa styling
     event = st.dataframe(
         display_df,
         use_container_width=True,
@@ -1070,11 +806,11 @@ if event.selection.rows:
     st.divider()
     st.header(f"📊 Detailed Analysis: {kode}")
     
-    # Create tabs for different sections
-    tab1, tab2, tab3= st.tabs(["📈 Chart & Metrics", "🎯 Risk Management", "🤖 Probability Analysis"])
+    # Create tabs
+    tab1, tab2, tab3 = st.tabs(["📈 Chart & Metrics", "💰 Value Trx", "🤖 Probability"])
     
     with tab1:
-        # Chart and basic metrics
+        # Refresh button
         col_retry1, col_retry2 = st.columns([1, 3])
         
         with col_retry1:
@@ -1094,17 +830,12 @@ if event.selection.rows:
                     else:
                         st.error("Refresh gagal")
         
-        # Chart
+        # Technical Chart
         st.subheader(f"📈 Technical Chart - {kode}")
         
         ticker = f"{kode}.JK"
         try:
-            df_daily = fetch_data(
-                ticker,
-                interval="1d",
-                period="12mo",
-                force_refresh=False
-            )
+            df_daily = fetch_data(ticker, interval="1d", period="12mo", force_refresh=False)
             
             if df_daily is None or df_daily.empty:
                 st.warning("Data chart tidak tersedia")
@@ -1124,36 +855,130 @@ if event.selection.rows:
             st.metric("Price", format_utils.format_currency(row["Price"]))
             st.metric("Price Change", f"{row['PriceChange%']}%")
             st.metric("Volume", f"{row['Volume']/1e6:.2f}M")
-            st.metric("Volume Ratio", f"{row['VOL_RATIO']:.2f}")
+            if "VOL_RATIO" in row:
+                st.metric("Volume Ratio", f"{row['VOL_RATIO']:.2f}")
         
         with tech_cols[1]:
             st.metric("RSI", f"{row['RSI']:.1f}")
-            st.metric("Stoch %K", f"{row['Stoch_K']:.1f}")
-            st.metric("Distance to SMA50", f"{row['Dist_to_SMA50']:.1f}%" if not pd.isna(row['Dist_to_SMA50']) else "N/A")
+            if "Stoch_K" in row:
+                st.metric("Stoch %K", f"{row['Stoch_K']:.1f}")
+            if "Dist_to_SMA50" in row and not pd.isna(row['Dist_to_SMA50']):
+                st.metric("Distance to SMA50", f"{row['Dist_to_SMA50']:.1f}%")
             st.metric("Major Trend", row["MajorTrend"])
         
         with tech_cols[2]:
             st.metric("Minor Phase", row["MinorPhase"])
             st.metric("Confidence", f"{row['MinorConfidence']} ({row['MinorConfidence%']}%)")
-            st.metric("Setup State", row["SetupState"])
+            if "SetupState" in row:
+                st.metric("Setup State", row["SetupState"])
             st.metric("Final Decision", row["FinalDecision"])
         
         # Gap Analysis
         st.subheader("📏 Gap Analysis")
         gap_cols = st.columns(3)
         with gap_cols[0]:
-            st.metric("Gap to EMA13", f"{row['Gap_EMA13%']}%")
+            if "Gap_EMA13%" in row:
+                st.metric("Gap to EMA13", f"{row['Gap_EMA13%']}%")
         with gap_cols[1]:
-            st.metric("Gap to EMA21", f"{row['Gap_EMA21%']}%")
+            if "Gap_EMA21%" in row:
+                st.metric("Gap to EMA21", f"{row['Gap_EMA21%']}%")
         with gap_cols[2]:
-            st.metric("Gap to EMA50", f"{row['Gap_EMA50%']}%")
+            if "Gap_EMA50%" in row:
+                st.metric("Gap to EMA50", f"{row['Gap_EMA50%']}%")
     
     with tab2:
-        # Risk Management Calculator
-        render_risk_management_calculator(kode, row["Price"])
+        # Value Trx Analysis - SELALU DITAMPILKAN
+        st.subheader("💰 Value Transaction Analysis")
+        
+        # Value Trx Metrics
+        value_cols = st.columns(4)
+        
+        with value_cols[0]:
+            if "ValueTrx_Rp" in row:
+                st.metric("Value Trx Today", row["ValueTrx_Rp"])
+            elif "ValueTrx" in row and row["ValueTrx"] > 0:
+                st.metric("Value Trx Today", f"Rp {row['ValueTrx']:,.0f}")
+            else:
+                st.metric("Value Trx Today", "N/A")
+        
+        with value_cols[1]:
+            if "ValueTrx_B" in row and row["ValueTrx_B"] > 0:
+                st.metric("Value (Billion)", f"{row['ValueTrx_B']:.2f}B")
+            elif "ValueTrx" in row and row["ValueTrx"] > 0:
+                st.metric("Value (Billion)", f"{row['ValueTrx']/1e9:.2f}B")
+            else:
+                st.metric("Value (Billion)", "N/A")
+        
+        with value_cols[2]:
+            if "AvgPrice" in row and row["AvgPrice"] > 0:
+                st.metric("Avg Price", f"Rp {row['AvgPrice']:,.0f}")
+            if "VWAP" in row and row["VWAP"] > 0:
+                st.metric("VWAP", f"Rp {row['VWAP']:,.0f}")
+        
+        with value_cols[3]:
+            if "ValueTrx_Status" in row:
+                status_badge = {
+                    "SUCCESS": "🟢",
+                    "SUCCESS_DAILY": "🟡",
+                    "1M_ACCURATE": "✅",
+                    "DAILY_APPROXIMATION": "📊",
+                    "FALLBACK": "⚠️",
+                    "NO_DATA_AVAILABLE": "❌"
+                }.get(row["ValueTrx_Status"], "❓")
+                
+                if "ValueTrx_Method" in row:
+                    st.metric("Method", f"{status_badge} {row['ValueTrx_Method']}")
+                else:
+                    st.metric("Status", f"{status_badge} {row['ValueTrx_Status']}")
+        
+        # Value Trx Historical Chart
+        st.subheader("📈 Value Trx History")
+        
+        ticker = f"{kode}.JK"
+        try:
+            df_daily = fetch_data(ticker, interval="1d", period="6mo", force_refresh=False)
+            
+            if df_daily is not None and not df_daily.empty:
+                fig = render_value_trx_chart(kode, df_daily)
+                if fig:
+                    st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.info("Tidak ada data historis untuk Value Trx chart")
+        except Exception as e:
+            st.error(f"Gagal render Value Trx chart: {e}")
+        
+        # Value Trx Details
+        with st.expander("📊 Value Trx Details"):
+            col_info1, col_info2 = st.columns(2)
+            
+            with col_info1:
+                if "ValueTrx_Volume" in row and row["ValueTrx_Volume"] > 0:
+                    st.write(f"**Volume (1m):** {row['ValueTrx_Volume']:,.0f} lembar")
+                
+                if "ValueTrx_Bars" in row:
+                    st.write(f"**1m Bars:** {row['ValueTrx_Bars']}")
+                
+                if "ValueTrx_Ratio" in row and not pd.isna(row["ValueTrx_Ratio"]):
+                    ratio = row["ValueTrx_Ratio"]
+                    st.write(f"**Value Ratio:** {ratio:.2f}")
+                    st.progress(min(ratio / 3.0, 1.0))
+            
+            with col_info2:
+                if "AvgPrice" in row and "Price" in row and row["AvgPrice"] > 0:
+                    premium = ((row["Price"] - row["AvgPrice"]) / row["AvgPrice"] * 100)
+                    st.write(f"**Price vs Avg:** {premium:+.1f}%")
+                    st.write("(Close vs Transaction Avg Price)")
+                
+                if "Liquidity_Score" in row:
+                    score_color = {
+                        "HIGH": "🟢",
+                        "MEDIUM": "🟡",
+                        "LOW": "🔴"
+                    }.get(row["Liquidity_Score"], "⚪")
+                    st.write(f"**Liquidity Score:** {score_color} {row['Liquidity_Score']}")
     
     with tab3:
-        # Probability Analysis and Backtest
+        # Probability Analysis
         st.subheader("🤖 Probability Analysis")
         
         if st.button("Run Backtest Analysis", key=f"run_analysis_{kode}"):
@@ -1242,43 +1067,62 @@ if event.selection.rows:
             else:
                 st.info("No probability table available for this stock")
     
-    # with tab4:
-    #     # Performance tracking for this stock
-    #     st.subheader(f"📊 Performance Tracking - {kode}")
+    with tab4:
+        # Broker Summary
+        st.subheader("📊 Broker Summary Integration")
         
-    #     tracker = st.session_state.performance_tracker
-    #     trades_df = tracker.get_trades_df()
+        TRADE_DATE = TODAY
+        df_broker, broker_used_date = load_broker_summary(TRADE_DATE)
         
-    #     if not trades_df.empty and kode in trades_df['symbol'].values:
-    #         stock_trades = trades_df[trades_df['symbol'] == kode]
-            
-    #         # Stock-specific metrics
-    #         col1, col2, col3, col4 = st.columns(4)
-            
-    #         with col1:
-    #             total_trades = len(stock_trades)
-    #             st.metric("Total Trades", total_trades)
-            
-    #         with col2:
-    #             win_rate = (stock_trades['win'].sum() / total_trades * 100) if total_trades > 0 else 0
-    #             st.metric("Win Rate", f"{win_rate:.1f}%")
-            
-    #         with col3:
-    #             total_pnl = stock_trades['net_pnl'].sum()
-    #             st.metric("Total P&L", format_utils.format_currency(total_pnl))
-            
-    #         with col4:
-    #             avg_pnl = stock_trades['net_pnl'].mean() if total_trades > 0 else 0
-    #             st.metric("Avg P&L", format_utils.format_currency(avg_pnl))
-            
-    #         # Display trades for this stock
-    #         st.dataframe(
-    #             stock_trades[['entry_time', 'exit_time', 'entry_price', 'exit_price', 
-    #                         'quantity', 'net_pnl', 'net_pnl_pct', 'win']].sort_values('exit_time', ascending=False),
-    #             use_container_width=True
-    #         )
-    #     else:
-    #         st.info(f"No trades recorded for {kode} yet")
+        if df_broker is not None and not df_broker.empty:
+            if show_status("Broker summary", TRADE_DATE, broker_used_date, df_broker):
+                # Try to merge with current stock
+                if kode in df_broker['stock'].values:
+                    broker_data = df_broker[df_broker['stock'] == kode].iloc[0]
+                    
+                    # Display broker metrics
+                    broker_cols = st.columns(4)
+                    
+                    with broker_cols[0]:
+                        if 'net_volume' in broker_data:
+                            net_vol = broker_data['net_volume']
+                            color = "🟢" if net_vol > 0 else "🔴"
+                            st.metric("Net Volume", f"{color} {abs(net_vol):,.0f}")
+                    
+                    with broker_cols[1]:
+                        if 'avg_buy_price_buyers' in broker_data and broker_data['avg_buy_price_buyers'] > 0:
+                            st.metric("Avg Buy Price", f"Rp {broker_data['avg_buy_price_buyers']:,.0f}")
+                    
+                    with broker_cols[2]:
+                        if 'avg_sell_price_buyers' in broker_data and broker_data['avg_sell_price_buyers'] > 0:
+                            st.metric("Avg Sell Price", f"Rp {broker_data['avg_sell_price_buyers']:,.0f}")
+                    
+                    with broker_cols[3]:
+                        if 'daily_summary' in broker_data:
+                            st.metric("Summary", broker_data['daily_summary'])
+                    
+                    # Display top buyers/sellers if available
+                    col_buyer, col_seller = st.columns(2)
+                    
+                    with col_buyer:
+                        st.markdown("##### 🟢 Top Buyers")
+                        if 'top5_buyers' in broker_data and pd.notna(broker_data['top5_buyers']):
+                            buyers_text = broker_data['top5_buyers']
+                            buyers_lines = buyers_text.split('\n')
+                            for line in buyers_lines:
+                                st.write(line)
+                    
+                    with col_seller:
+                        st.markdown("##### 🔴 Top Sellers")
+                        if 'top5_sellers' in broker_data and pd.notna(broker_data['top5_sellers']):
+                            sellers_text = broker_data['top5_sellers']
+                            sellers_lines = sellers_text.split('\n')
+                            for line in sellers_lines:
+                                st.write(line)
+                else:
+                    st.info(f"Tidak ada data broker summary untuk {kode} pada tanggal {broker_used_date}")
+        else:
+            st.info("Broker summary data tidak tersedia")
 
 # ======================================================
 # TRIGGER SCREENING SECTION
@@ -1290,6 +1134,8 @@ trigger_col1, trigger_col2 = st.columns([1, 3])
 with trigger_col1:
     if st.button("Run Trigger Screening", key="btn_trigger_screening", use_container_width=True):
         df_screen = st.session_state.get("scan")
+        
+       
         
         if df_screen is None or df_screen.empty:
             st.warning("Belum ada hasil screening")
@@ -1341,7 +1187,6 @@ with trigger_col1:
         
         st.rerun()
 
-# Display trigger results
 # Display trigger results
 TRADE_DATE = TODAY
 df_trigger, trigger_used_date = load_trigger_cache_pickle(TRADE_DATE)
@@ -1794,12 +1639,6 @@ if df_broker is not None and not df_broker.empty:
                 st.warning("Tidak ada overlap antara saham trigger dan broker summary.")
         else:
             st.info("Menunggu hasil trigger screening...")
-# # ======================================================
-# # PERFORMANCE TRACKING DASHBOARD
-# # ======================================================
-# st.divider()
-# render_performance_tracking()
-
 # ======================================================
 # FOOTER
 # ======================================================

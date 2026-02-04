@@ -33,6 +33,297 @@ EXTRA_CONF = 2
 MAX_CONF = BASE_CONF + EXTRA_CONF
 
 # ======================================================
+# VALUE TRX FUNCTIONS (NEW ADDITION)
+# ======================================================
+import yfinance as yf
+from datetime import datetime, timedelta
+
+def calculate_value_trx_from_1m(ticker: str, date: str = None, use_cache: bool = True) -> dict:
+    """
+    Hitung value trx dari data 1 menit untuk satu hari tertentu
+    
+    Args:
+        ticker: Kode saham (BBCA.JK)
+        date: Tanggal (YYYY-MM-DD), default hari ini
+        use_cache: Gunakan cache untuk mempercepat
+    
+    Returns:
+        dict: Berisi metrics value trx lengkap
+    """
+    if date is None:
+        date = datetime.now().strftime("%Y-%m-%d")
+    
+    # Generate cache key
+    cache_key = f"valuetrx_{ticker.replace('.', '_')}_{date}"
+    
+    # Check cache first if enabled
+    if use_cache:
+        cached = cache_manager.load(cache_key, suffix="pkl")
+        if cached is not None:
+            print(f"  Using cached value trx for {ticker} on {date}")
+            return cached
+    
+    try:
+        print(f"  Fetching 1m data for value trx calculation: {ticker} ({date})")
+        
+        # **PERBAIKAN: Gunakan format datetime yang benar untuk yfinance**
+        # yfinance format: "YYYY-MM-DD"
+        start_date = pd.Timestamp(date).strftime("%Y-%m-%d")
+        end_date = (pd.Timestamp(date) + pd.Timedelta(days=1)).strftime("%Y-%m-%d")
+        
+        df_1m = yf.download(
+            ticker,
+            start=start_date,
+            end=end_date,
+            interval="1m",
+            progress=False,
+            threads=False,
+            timeout=10
+        )
+        
+        if df_1m.empty:
+            print(f"    No 1m data available for {ticker} on {date}")
+            return {
+                'total_value': 0,
+                'avg_price': 0,
+                'volume_total': 0,
+                'bars_count': 0,
+                'vwap': 0,
+                'date': date,
+                'status': 'NO_DATA'
+            }
+        
+        # **PERBAIKAN: Handle empty data after market hours**
+        if len(df_1m) < 10:  # Minimal 10 bar untuk valid data
+            print(f"    Insufficient 1m bars for {ticker}: {len(df_1m)} bars")
+            return {
+                'total_value': 0,
+                'avg_price': 0,
+                'volume_total': 0,
+                'bars_count': len(df_1m),
+                'vwap': 0,
+                'date': date,
+                'status': 'INSUFFICIENT_BARS'
+            }
+        
+        # Normalize jika menggunakan MultiIndex
+        if isinstance(df_1m.columns, pd.MultiIndex):
+            if ticker in df_1m.columns.get_level_values(1):
+                df_1m = df_1m.xs(ticker, axis=1, level=1)
+            else:
+                available_tickers = df_1m.columns.get_level_values(1).unique()
+                if len(available_tickers) > 0:
+                    df_1m = df_1m.xs(available_tickers[0], axis=1, level=1)
+                else:
+                    return {
+                        'total_value': 0,
+                        'avg_price': 0,
+                        'volume_total': 0,
+                        'bars_count': 0,
+                        'vwap': 0,
+                        'date': date,
+                        'status': 'NO_TICKER_DATA'
+                    }
+        
+        # Rename columns if needed
+        column_map = {'Adj Close': 'Close'}
+        df_1m.rename(columns=column_map, inplace=True)
+        
+        # Validasi kolom required
+        required_cols = ['Open', 'High', 'Low', 'Close', 'Volume']
+        missing_cols = [col for col in required_cols if col not in df_1m.columns]
+        
+        if missing_cols:
+            print(f"    Missing columns for {ticker}: {missing_cols}")
+            return {
+                'total_value': 0,
+                'avg_price': 0,
+                'volume_total': 0,
+                'bars_count': 0,
+                'vwap': 0,
+                'date': date,
+                'status': f'MISSING_COLS_{missing_cols}'
+            }
+        
+        # Bersihkan data
+        df_1m = df_1m[required_cols].copy()
+        df_1m.dropna(inplace=True)
+        
+        if len(df_1m) == 0:
+            return {
+                'total_value': 0,
+                'avg_price': 0,
+                'volume_total': 0,
+                'bars_count': 0,
+                'vwap': 0,
+                'date': date,
+                'status': 'NO_VALID_DATA'
+            }
+        
+        # Hitung metrics
+        volume_total = df_1m['Volume'].sum()
+        
+        # Gunakan typical price untuk perhitungan lebih akurat
+        df_1m['TypicalPrice'] = (df_1m['High'] + df_1m['Low'] + df_1m['Close']) / 3
+        vwap = (df_1m['TypicalPrice'] * df_1m['Volume']).sum() / volume_total if volume_total > 0 else 0
+        
+        # Value per bar dan total value
+        df_1m['ValuePerBar'] = df_1m['TypicalPrice'] * df_1m['Volume']
+        total_value = df_1m['ValuePerBar'].sum()
+        
+        # Average price (simplified)
+        avg_price = df_1m['TypicalPrice'].mean()
+        
+        # Additional metrics
+        first_price = df_1m['Close'].iloc[0] if len(df_1m) > 0 else 0
+        last_price = df_1m['Close'].iloc[-1] if len(df_1m) > 0 else 0
+        price_change = ((last_price / first_price) - 1) * 100 if first_price > 0 else 0
+        
+        # Volume distribution metrics
+        if len(df_1m) > 0:
+            high_volume_bars = len(df_1m[df_1m['Volume'] > df_1m['Volume'].median()])
+        else:
+            high_volume_bars = 0
+        
+        result = {
+            'total_value': total_value,
+            'total_value_rp': f"Rp {total_value:,.0f}",
+            'total_value_m': round(total_value / 1_000_000, 2),
+            'total_value_b': round(total_value / 1_000_000_000, 3),
+            'vwap': vwap,
+            'avg_price': avg_price,
+            'volume_total': volume_total,
+            'volume_total_formatted': f"{volume_total:,.0f}",
+            'bars_count': len(df_1m),
+            'first_price': first_price,
+            'last_price': last_price,
+            'price_change_pct': round(price_change, 2),
+            'high_volume_bars': high_volume_bars,
+            'high_volume_ratio': round(high_volume_bars / len(df_1m), 2) if len(df_1m) > 0 else 0,
+            'date': date,
+            'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            'status': 'SUCCESS'
+        }
+        
+        # Save to cache
+        if use_cache:
+            cache_manager.save(cache_key, result, suffix="pkl")
+        
+        return result
+        
+    except Exception as e:
+        print(f"  Error calculating value trx from 1m for {ticker}: {e}")
+        return {
+            'total_value': 0,
+            'avg_price': 0,
+            'volume_total': 0,
+            'bars_count': 0,
+            'vwap': 0,
+            'date': date,
+            'status': f'ERROR: {str(e)[:50]}'
+        }
+
+def calculate_daily_value_trx(df_daily: pd.DataFrame) -> dict:
+    """
+    Hitung value trx dan metrics terkait dari data daily
+    (Fallback jika data 1m tidak tersedia)
+    """
+    if df_daily.empty or len(df_daily) < 1:
+        return {}
+    
+    try:
+        # Ambil data hari terakhir
+        last_day = df_daily.iloc[-1]
+        
+        # Hitung typical price
+        typical_price = (
+            last_day['High'] + last_day['Low'] + last_day['Close']
+        ) / 3
+        
+        # Hitung value trx
+        value_trx = last_day['Volume'] * typical_price
+        
+        return {
+            'total_value': value_trx,
+            'total_value_rp': f"Rp {value_trx:,.0f}",
+            'total_value_m': round(value_trx / 1_000_000, 2),
+            'total_value_b': round(value_trx / 1_000_000_000, 3),
+            'vwap': typical_price,
+            'avg_price': typical_price,
+            'volume_total': last_day['Volume'],
+            'volume_total_formatted': f"{last_day['Volume']:,.0f}",
+            'bars_count': 1,
+            'first_price': last_day['Open'],
+            'last_price': last_day['Close'],
+            'price_change_pct': round(((last_day['Close'] / last_day['Open']) - 1) * 100, 2),
+            'date': last_day.name.strftime("%Y-%m-%d") if hasattr(last_day.name, 'strftime') else str(last_day.name),
+            'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            'method': 'DAILY_APPROXIMATION',
+            'status': 'SUCCESS_DAILY'
+        }
+        
+    except Exception as e:
+        print(f"Error in calculate_daily_value_trx: {e}")
+        return {}
+
+def get_value_trx_metrics(ticker: str, df_daily: pd.DataFrame = None, 
+                         use_1m_preferred: bool = True, date: str = None) -> dict:
+    """
+    Get value trx metrics dengan fallback strategy
+    """
+    if date is None and df_daily is not None and not df_daily.empty:
+        last_date = df_daily.index[-1]
+        date = last_date.strftime("%Y-%m-%d") if hasattr(last_date, 'strftime') else str(last_date)
+    
+    if date is None:
+        date = datetime.now().strftime("%Y-%m-%d")
+    
+    # **PERBAIKAN: Cek jika hari ini weekend atau hari libur**
+    # Jika hari Sabtu/Minggu, gunakan hari Jumat
+    check_date = pd.Timestamp(date)
+    if check_date.weekday() >= 5:  # 5 = Sabtu, 6 = Minggu
+        # Mundur ke hari Jumat terakhir
+        days_back = check_date.weekday() - 4  # 4 = Jumat
+        check_date = check_date - pd.Timedelta(days=days_back)
+        date = check_date.strftime("%Y-%m-%d")
+        print(f"  Adjusted to last trading day: {date}")
+    
+    # Try 1m data first if preferred
+    if use_1m_preferred:
+        result_1m = calculate_value_trx_from_1m(ticker, date, use_cache=True)
+        
+        # **PERBAIKAN: Kurangi threshold untuk valid data**
+        if (result_1m.get('status') in ['SUCCESS', 'INSUFFICIENT_BARS'] and 
+            result_1m.get('total_value', 0) > 0 and
+            result_1m.get('bars_count', 0) >= 5):  # Minimal 5 bar
+            result_1m['method'] = '1M_ACCURATE'
+            return result_1m
+        
+        print(f"  1m data insufficient for {ticker}, falling back to daily approximation")
+    
+    # Fallback to daily approximation
+    if df_daily is not None and not df_daily.empty:
+        result_daily = calculate_daily_value_trx(df_daily)
+        if result_daily:
+            return result_daily
+    
+    # Final fallback
+    return {
+        'total_value': 0,
+        'total_value_rp': "Rp 0",
+        'total_value_m': 0,
+        'total_value_b': 0,
+        'vwap': 0,
+        'avg_price': 0,
+        'volume_total': 0,
+        'volume_total_formatted': "0",
+        'bars_count': 0,
+        'date': date,
+        'method': 'FALLBACK',
+        'status': 'NO_DATA_AVAILABLE'
+    }
+
+# ======================================================
 # CACHE MANAGEMENT (using utils)
 # ======================================================
 CACHE_DIR = "data_cache"
@@ -107,7 +398,6 @@ def normalize_yf_df(df: pd.DataFrame, ticker: str = None) -> pd.DataFrame:
     # Ensure proper column names
     column_map = {
         'Adj Close': 'Close',
-        'Adj Close': 'Close',
     }
     df.rename(columns=column_map, inplace=True)
     
@@ -162,6 +452,7 @@ def fetch_data(ticker: str, interval: str = "1d", period: str = "12mo",
     
     return df
 
+# Di bagian fetch_intraday_safe function, perbaiki:
 def fetch_intraday_safe(
     ticker: str,
     interval: str = "1h",
@@ -171,20 +462,28 @@ def fetch_intraday_safe(
 ) -> pd.DataFrame:
     """
     Fetch intraday data safely with fallback options
-    
-    Returns:
-    --------
-    pd.DataFrame or None
     """
     cache_key = f"{get_cache_key(ticker, interval, period)}_intraday"
     
     # Check cache first
     cached_data = cache_manager.load(cache_key, suffix="pkl")
     if cached_data is not None and not cached_data.empty:
-        # Check if cache is fresh (less than 1 hour old for intraday)
-        cache_age = cache_manager.get_cache_age(cache_key, suffix="pkl")
-        if cache_age < 3600:  # 1 hour in seconds
-            return cached_data.copy()
+        # **PERBAIKAN: Simplifikasi cache age check**
+        # Coba cek tanggal terakhir di cache
+        try:
+            last_date = cached_data.index[-1]
+            today = pd.Timestamp.today().date()
+            
+            # Jika cache dari hari yang sama, gunakan cache
+            if hasattr(last_date, 'date'):
+                if last_date.date() == today:
+                    return cached_data.copy()
+            elif isinstance(last_date, str):
+                cache_date = pd.to_datetime(last_date).date()
+                if cache_date == today:
+                    return cached_data.copy()
+        except:
+            pass  # Jika error, tetap fetch data baru
     
     try:
         # Use safe download from utils
@@ -750,15 +1049,19 @@ def final_decision(
     return "WAIT"
 
 # ======================================================
-# MAIN STOCK PROCESSING FUNCTION
+# MAIN STOCK PROCESSING FUNCTION - UPDATED WITH VALUE TRX
 # ======================================================
-def process_stock(kode: str, use_cache: bool = True):
+def process_stock(kode: str, use_cache: bool = True, include_value_trx: bool = False):
     """
-    Process a single stock for screening
+    Process a single stock for screening - DENGAN VALUE TRX OPTIONAL
+    
+    Args:
+        kode: Kode saham (contoh: "BBCA")
+        use_cache: Gunakan cache untuk data
+        include_value_trx: Include value trx calculation (default: False)
     
     Returns:
-    --------
-    dict: Stock analysis results or None if failed
+        dict: Stock analysis results or None if failed
     """
     ticker = f"{kode}.JK"
     
@@ -787,12 +1090,35 @@ def process_stock(kode: str, use_cache: bool = True):
             return None
         
         # =========================
-        # 3. MAJOR TREND
+        # 3. VALUE TRX CALCULATION
+        # =========================
+        value_trx_metrics = {}
+        if include_value_trx:
+            print(f"  Calculating value trx for {kode}...")
+            # **PERBAIKAN: Gunakan tanggal terakhir dari data daily**
+            if not d1.empty:
+                last_trading_date = d1.index[-1].strftime("%Y-%m-%d")
+                value_trx_metrics = get_value_trx_metrics(
+                    ticker=ticker,
+                    df_daily=d1,
+                    use_1m_preferred=True,
+                    date=last_trading_date  # Gunakan tanggal terakhir dari data
+                )
+            else:
+                value_trx_metrics = get_value_trx_metrics(
+                    ticker=ticker,
+                    df_daily=d1,
+                    use_1m_preferred=True,
+                    date=None
+                )
+        
+        # =========================
+        # 4. MAJOR TREND
         # =========================
         major = major_trend_daily(d1)
         
         # =========================
-        # 4. MINOR PHASE (try intraday first)
+        # 5. MINOR PHASE (try intraday first)
         # =========================
         minor = "NEUTRAL"
         why = []
@@ -824,18 +1150,18 @@ def process_stock(kode: str, use_cache: bool = True):
             stage2 = stage2_trigger(d1, setup)
         
         # =========================
-        # 5. VOLUME ANALYSIS
+        # 6. VOLUME ANALYSIS
         # =========================
         vol_behavior, vol_ratio, volume, vol_ma20 = volume_behavior(d1)
         
         # =========================
-        # 6. CANDLE ANALYSIS
+        # 7. CANDLE ANALYSIS
         # =========================
         candle_label, candle_red, candle_green = latest_candle_info(d1)
         candle_effect = 1 if candle_green else -1 if candle_red else 0
         
         # =========================
-        # 7. PRICE METRICS
+        # 8. PRICE METRICS
         # =========================
         last_idx = len(d1) - 1
         price_today = float(d1["Close"].iloc[last_idx])
@@ -854,7 +1180,7 @@ def process_stock(kode: str, use_cache: bool = True):
         dist_to_sma50 = compute_dist_sma50(d1)
         
         # =========================
-        # 8. CONFIDENCE ADJUSTMENTS
+        # 9. CONFIDENCE ADJUSTMENTS
         # =========================
         # Boost confidence for favorable conditions
         if minor == "TREND_CONTINUE":
@@ -866,16 +1192,23 @@ def process_stock(kode: str, use_cache: bool = True):
                 confidence += 1
                 why.append("Impulse candle terdeteksi")
         
+        # Tambah confidence jika value trx tinggi (likuiditas bagus)
+        if include_value_trx and value_trx_metrics:
+            value_trx_b = value_trx_metrics.get('total_value_b', 0)
+            if value_trx_b > 5:  # Lebih dari 5 miliar
+                confidence += 1
+                why.append(f"Likuiditas tinggi ({value_trx_b:.1f}B)")
+        
         # Recalculate confidence percentage
         confidence_pct = round((confidence / 7) * 100) if 7 > 0 else 0
         
         # =========================
-        # 9. FINAL DECISION
+        # 10. FINAL DECISION
         # =========================
         final_dec = final_decision(major, minor, setup, stage2, vol_behavior)
         
         # =========================
-        # 10. VALIDATION GUARDS
+        # 11. VALIDATION GUARDS
         # =========================
         if not validation_utils.validate_price_data(price_today):
             print(f"  Invalid price for {kode}: {price_today}")
@@ -886,7 +1219,7 @@ def process_stock(kode: str, use_cache: bool = True):
             return None
         
         # =========================
-        # 11. RETURN RESULTS
+        # 12. RETURN RESULTS - WITH OPTIONAL VALUE TRX
         # =========================
         result = {
             "Kode": kode,
@@ -916,12 +1249,78 @@ def process_stock(kode: str, use_cache: bool = True):
             "ProcessTimestamp": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S")
         }
         
+        # Tambahkan value trx metrics jika diminta
+        if include_value_trx and value_trx_metrics:
+            result.update({
+                "ValueTrx": value_trx_metrics.get('total_value', 0),
+                "ValueTrx_Rp": value_trx_metrics.get('total_value_rp', 'Rp 0'),
+                # "ValueTrx_B": value_trx_metrics.get('total_value_b', 0),
+                "VWAP": round(value_trx_metrics.get('vwap', 0), 2),
+                "AvgPrice": round(value_trx_metrics.get('avg_price', 0), 2),
+                "ValueTrx_Volume": value_trx_metrics.get('volume_total', 0),
+                "ValueTrx_Bars": value_trx_metrics.get('bars_count', 0),
+                "ValueTrx_Method": value_trx_metrics.get('method', 'N/A'),
+                "ValueTrx_Status": value_trx_metrics.get('status', 'UNKNOWN')
+            })
+        
         print(f"  ✓ Processed {kode}: {major}/{minor}/{final_dec}")
+        
+        # Tambahkan log value trx jika ada
+        if include_value_trx and value_trx_metrics.get('total_value', 0) > 0:
+            print(f"    Value Trx: {value_trx_metrics.get('total_value_rp', 'Rp 0')}")
+        
         return result
         
     except Exception as e:
         print(f"  ✗ Error processing {kode}: {str(e)}")
         return None
+
+# ======================================================
+# BATCH PROCESSING WITH VALUE TRX OPTIONAL
+# ======================================================
+def batch_process_stocks(stock_list: list, include_value_trx: bool = False) -> pd.DataFrame:
+    """
+    Process multiple stocks in batch mode
+    
+    Args:
+        stock_list: List of stock codes
+        include_value_trx: Include value trx calculation (default: False)
+    
+    Returns:
+        pd.DataFrame: Results dataframe
+    """
+    results = []
+    
+    print(f"Batch processing {len(stock_list)} stocks...")
+    print(f"Include Value Trx: {include_value_trx}")
+    print("=" * 60)
+    
+    for i, kode in enumerate(stock_list, 1):
+        print(f"\n[{i}/{len(stock_list)}] ", end="")
+        
+        result = process_stock(
+            kode=kode,
+            use_cache=True,
+            include_value_trx=include_value_trx
+        )
+        
+        if result:
+            results.append(result)
+    
+    # Convert to DataFrame
+    if results:
+        df_results = pd.DataFrame(results)
+        
+        # Sort by Value Trx jika ada
+        if include_value_trx and "ValueTrx_B" in df_results.columns:
+            df_results = df_results.sort_values("ValueTrx_B", ascending=False)
+            print(f"\nTop 5 by Value Trx:")
+            for _, row in df_results.head().iterrows():
+                print(f"  {row['Kode']}: {row.get('ValueTrx_Rp', 'Rp 0')}")
+        
+        return df_results
+    
+    return pd.DataFrame()
 
 # ======================================================
 # MARKET STATE EXTRACTION
@@ -1000,9 +1399,11 @@ if __name__ == "__main__":
     print("Testing engine_v2.py")
     print("=" * 50)
     
-    for kode in test_codes:
+    # Test tanpa value trx (default)
+    print("\n--- Test tanpa Value Trx ---")
+    for kode in test_codes[:2]:
         print(f"\nProcessing {kode}...")
-        result = process_stock(kode, use_cache=True)
+        result = process_stock(kode, use_cache=True, include_value_trx=False)
         
         if result:
             print(f"  Price: {result['Price']:,}")
@@ -1010,6 +1411,21 @@ if __name__ == "__main__":
             print(f"  Minor Phase: {result['MinorPhase']}")
             print(f"  Final Decision: {result['FinalDecision']}")
             print(f"  RSI: {result['RSI']}, Stoch: {result['Stoch_K']}")
+        else:
+            print(f"  Failed to process {kode}")
+    
+    # Test dengan value trx
+    print("\n\n--- Test dengan Value Trx ---")
+    for kode in test_codes[:2]:
+        print(f"\nProcessing {kode} with value trx...")
+        result = process_stock(kode, use_cache=True, include_value_trx=True)
+        
+        if result:
+            print(f"  Price: {result['Price']:,}")
+            print(f"  Major Trend: {result['MajorTrend']}")
+            if 'ValueTrx_Rp' in result:
+                print(f"  Value Trx: {result['ValueTrx_Rp']}")
+                print(f"  Method: {result.get('ValueTrx_Method', 'N/A')}")
         else:
             print(f"  Failed to process {kode}")
     
