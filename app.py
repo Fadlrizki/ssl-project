@@ -1107,8 +1107,8 @@ if event.selection.rows:
                                 st.metric("Avg Buy Price", f"Rp {broker_data['avg_buy_price_buyers']:,.0f}")
                         
                         with broker_cols[1]:
-                            if 'avg_sell_price_buyers' in broker_data and broker_data['avg_sell_price_buyers'] > 0:
-                                st.metric("Avg Sell Price", f"Rp {broker_data['avg_sell_price_buyers']:,.0f}")
+                            if 'avg_sell_price_sellers' in broker_data and broker_data['avg_sell_price_sellers'] > 0:
+                                st.metric("Avg Sell Price", f"Rp {broker_data['avg_sell_price_sellers']:,.0f}")
                         
                         with broker_cols[2]:
                             if 'daily_summary' in broker_data:
@@ -1295,7 +1295,7 @@ if df_broker is not None and not df_broker.empty:
                     # Tampilkan tabel utama - TAMBAHKAN AVG PRICE COLUMNS
                     main_cols = ['Kode', 'Sector', 'Industry', 'MajorTrend', 'MinorPhase', 
                                'ProbHijau', 'ProbMerah', 'Confidence', 
-                               'net_volume', 'avg_buy_price_buyers', 'avg_sell_price_buyers']
+                               'net_volume', 'avg_buy_price_buyers', 'avg_sell_price_sellers']
                     
                     # Filter hanya kolom yang ada di df_final
                     available_cols = [col for col in main_cols if col in df_final.columns]
@@ -1322,8 +1322,8 @@ if df_broker is not None and not df_broker.empty:
                                 lambda x: f"{x:,.0f}" if pd.notna(x) and x != 0 else "N/A"
                             )
                         
-                        if 'avg_sell_price_buyers' in display_df.columns:
-                            display_df['avg_sell_price_buyers'] = display_df['avg_sell_price_buyers'].apply(
+                        if 'avg_sell_price_sellers' in display_df.columns:
+                            display_df['avg_sell_price_sellers'] = display_df['avg_sell_price_sellers'].apply(
                                 lambda x: f"{x:,.0f}" if pd.notna(x) and x != 0 else "N/A"
                             )
                         
@@ -1374,8 +1374,8 @@ if df_broker is not None and not df_broker.empty:
                         if 'avg_buy_price_buyers' in styled_df.columns:
                             styled_df = styled_df.applymap(color_avg_buy, subset=['avg_buy_price_buyers'])
                         
-                        if 'avg_sell_price_buyers' in styled_df.columns:
-                            styled_df = styled_df.applymap(color_avg_sell, subset=['avg_sell_price_buyers'])
+                        if 'avg_sell_price_sellers' in styled_df.columns:
+                            styled_df = styled_df.applymap(color_avg_sell, subset=['avg_sell_price_sellers'])
                         
                         # Warna untuk net volume
                         if 'net_volume' in styled_df.columns:
@@ -1528,17 +1528,17 @@ if df_broker is not None and not df_broker.empty:
                                     st.metric("Avg Buy Price", f"{avg_buy:,.0f}")
                             
                             with col_price2:
-                                if 'avg_sell_price_buyers' in selected_data and pd.notna(selected_data['avg_sell_price_buyers']):
-                                    avg_sell = float(selected_data['avg_sell_price_buyers'])
+                                if 'avg_sell_price_sellers' in selected_data and pd.notna(selected_data['avg_sell_price_sellers']):
+                                    avg_sell = float(selected_data['avg_sell_price_sellers'])
                                     st.metric("Avg Sell Price", f"{avg_sell:,.0f}")
                             
                             # Calculate spread jika ada kedua data
-                            if ('avg_buy_price_buyers' in selected_data and 'avg_sell_price_buyers' in selected_data and
+                            if ('avg_buy_price_buyers' in selected_data and 'avg_sell_price_sellers' in selected_data and
                                 pd.notna(selected_data['avg_buy_price_buyers']) and 
-                                pd.notna(selected_data['avg_sell_price_buyers'])):
+                                pd.notna(selected_data['avg_sell_price_sellers'])):
                                 
                                 avg_buy = float(selected_data['avg_buy_price_buyers'])
-                                avg_sell = float(selected_data['avg_sell_price_buyers'])
+                                avg_sell = float(selected_data['avg_sell_price_sellers'])
                                 spread = avg_buy - avg_sell
                                 spread_pct = (spread / avg_sell * 100) if avg_sell > 0 else 0
                                 
@@ -1595,12 +1595,12 @@ if df_broker is not None and not df_broker.empty:
                                 # Tambahkan info price jika ada
                                 price_info = ""
                                 if ('avg_buy_price_buyers' in selected_data and 
-                                    'avg_sell_price_buyers' in selected_data and
+                                    'avg_sell_price_sellers' in selected_data and
                                     pd.notna(selected_data['avg_buy_price_buyers']) and 
-                                    pd.notna(selected_data['avg_sell_price_buyers'])):
+                                    pd.notna(selected_data['avg_sell_price_sellers'])):
                                     
                                     avg_buy = float(selected_data['avg_buy_price_buyers'])
-                                    avg_sell = float(selected_data['avg_sell_price_buyers'])
+                                    avg_sell = float(selected_data['avg_sell_price_sellers'])
                                     price_info = f" | Buy: {avg_buy:,.0f} | Sell: {avg_sell:,.0f}"
                                 
                                 st.markdown(f"### 📊 Volume Analysis {price_info}")
