@@ -265,7 +265,71 @@ def calculate_daily_value_trx(df_daily: pd.DataFrame) -> dict:
     except Exception as e:
         print(f"Error in calculate_daily_value_trx: {e}")
         return {}
-
+    
+# Tambahkan sector info
+def get_sector_info(ticker: str, use_cache: bool = True) -> dict:
+    """
+    Get sector information for a ticker with caching
+    
+    Args:
+        ticker: Kode saham (BBCA.JK)
+        use_cache: Gunakan cache untuk mempercepat
+    
+    Returns:
+        dict: Sector information
+    """
+    # Generate cache key
+    cache_key = f"sector_{ticker.replace('.', '_')}"
+    
+    # Check cache first if enabled
+    if use_cache:
+        cached = cache_manager.load(cache_key, suffix="pkl")
+        if cached is not None:
+            return cached
+    
+    try:
+        # Create yfinance ticker object
+        yf_ticker = yf.Ticker(ticker)
+        
+        # Get info dengan retry mechanism
+        max_retries = 2
+        for attempt in range(max_retries):
+            try:
+                info = yf_ticker.info
+                
+                # Extract sector information
+                sector_info = {
+                    'sector': info.get('sector', 'Unknown'),
+                    'industry': info.get('industry', 'Unknown'),
+                    'marketCap': info.get('marketCap', 0),
+                    'company_name': info.get('longName', ticker),
+                    'country': info.get('country', 'ID')
+                }
+                
+                # Save to cache
+                if use_cache:
+                    cache_manager.save(cache_key, sector_info, suffix="pkl")
+                
+                return sector_info
+                
+            except Exception as e:
+                if attempt < max_retries - 1:
+                    time.sleep(0.5)  # Wait before retry
+                    continue
+                else:
+                    raise e
+                    
+    except Exception as e:
+        print(f"  Error getting sector info for {ticker}: {e}")
+        # Return default values
+        return {
+            'sector': 'Unknown',
+            'industry': 'Unknown',
+            'marketCap': 0,
+            'company_name': ticker,
+            'country': 'ID'
+        }
+    
 def get_value_trx_metrics(ticker: str, df_daily: pd.DataFrame = None, 
                          use_1m_preferred: bool = True, date: str = None) -> dict:
     """
@@ -1071,6 +1135,7 @@ def process_stock(kode: str, use_cache: bool = True, include_value_trx: bool = F
         # =========================
         # 1. FETCH DAILY DATA
         # =========================
+        sector_info = get_sector_info(ticker, use_cache=use_cache)
         d1 = fetch_data(ticker, "1d", "12mo", force_refresh=not use_cache)
         if d1 is None or d1.empty:
             print(f"  No daily data for {kode}")
@@ -1223,6 +1288,8 @@ def process_stock(kode: str, use_cache: bool = True, include_value_trx: bool = F
         # =========================
         result = {
             "Kode": kode,
+            "Sector": sector_info.get('sector', 'Unknown'),  
+            "Industry": sector_info.get('industry', 'Unknown'),
             "Price": price_today,
             "PriceChange%": price_change,
             "Gap_EMA13%": gap_ema13,

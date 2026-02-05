@@ -17,6 +17,7 @@ from engine import build_probability_table_from_ticker, backtest
 from engine_v2 import process_stock, fetch_data, add_indicators
 from utils import data_utils, cache_manager, date_utils, format_utils, validation_utils
 
+
 # ======================================================
 # CONFIG
 # ======================================================
@@ -747,7 +748,7 @@ if not display_df.empty:
         )
     
     # Select columns to display
-    display_cols = ["Kode", "Price", "PriceChange%", "MajorTrend", "MinorPhase", 
+    display_cols = ["Kode", "Sector","Industry","Price", "PriceChange%", "MajorTrend", "MinorPhase", 
                    "MinorConfidence%", "RSI", "Volume_Display"]
     
     # Add VOL_BEHAVIOR
@@ -1067,62 +1068,74 @@ if event.selection.rows:
             else:
                 st.info("No probability table available for this stock")
     
-    with tab4:
+        with tab4:
         # Broker Summary
-        st.subheader("📊 Broker Summary Integration")
-        
-        TRADE_DATE = TODAY
-        df_broker, broker_used_date = load_broker_summary(TRADE_DATE)
-        
-        if df_broker is not None and not df_broker.empty:
-            if show_status("Broker summary", TRADE_DATE, broker_used_date, df_broker):
-                # Try to merge with current stock
-                if kode in df_broker['stock'].values:
-                    broker_data = df_broker[df_broker['stock'] == kode].iloc[0]
-                    
-                    # Display broker metrics
-                    broker_cols = st.columns(4)
-                    
-                    with broker_cols[0]:
-                        if 'net_volume' in broker_data:
-                            net_vol = broker_data['net_volume']
-                            color = "🟢" if net_vol > 0 else "🔴"
-                            st.metric("Net Volume", f"{color} {abs(net_vol):,.0f}")
-                    
-                    with broker_cols[1]:
-                        if 'avg_buy_price_buyers' in broker_data and broker_data['avg_buy_price_buyers'] > 0:
-                            st.metric("Avg Buy Price", f"Rp {broker_data['avg_buy_price_buyers']:,.0f}")
-                    
-                    with broker_cols[2]:
-                        if 'avg_sell_price_buyers' in broker_data and broker_data['avg_sell_price_buyers'] > 0:
-                            st.metric("Avg Sell Price", f"Rp {broker_data['avg_sell_price_buyers']:,.0f}")
-                    
-                    with broker_cols[3]:
-                        if 'daily_summary' in broker_data:
-                            st.metric("Summary", broker_data['daily_summary'])
-                    
-                    # Display top buyers/sellers if available
-                    col_buyer, col_seller = st.columns(2)
-                    
-                    with col_buyer:
-                        st.markdown("##### 🟢 Top Buyers")
-                        if 'top5_buyers' in broker_data and pd.notna(broker_data['top5_buyers']):
-                            buyers_text = broker_data['top5_buyers']
-                            buyers_lines = buyers_text.split('\n')
-                            for line in buyers_lines:
-                                st.write(line)
-                    
-                    with col_seller:
-                        st.markdown("##### 🔴 Top Sellers")
-                        if 'top5_sellers' in broker_data and pd.notna(broker_data['top5_sellers']):
-                            sellers_text = broker_data['top5_sellers']
-                            sellers_lines = sellers_text.split('\n')
-                            for line in sellers_lines:
-                                st.write(line)
-                else:
-                    st.info(f"Tidak ada data broker summary untuk {kode} pada tanggal {broker_used_date}")
-        else:
-            st.info("Broker summary data tidak tersedia")
+            st.subheader("📊 Broker Summary Integration")
+            
+            TRADE_DATE = TODAY
+            df_broker, broker_used_date = load_broker_summary(TRADE_DATE)
+            
+            if df_broker is not None and not df_broker.empty:
+                if show_status("Broker summary", TRADE_DATE, broker_used_date, df_broker):
+                    # Try to merge with current stock
+                    if kode in df_broker['stock'].values:
+                        broker_data = df_broker[df_broker['stock'] == kode].iloc[0]
+                        
+                        # TAMBAH INI: Display Sector and Industry
+                        st.markdown("##### 📊 Company Info")
+                        info_cols = st.columns(3)
+                        
+                        with info_cols[0]:
+                            if 'Sector' in row:
+                                st.metric("Sector", row['Sector'])
+                        
+                        with info_cols[1]:
+                            if 'Industry' in row:
+                                st.metric("Industry", row['Industry'])
+                        
+                        with info_cols[2]:
+                            if 'net_volume' in broker_data:
+                                net_vol = broker_data['net_volume']
+                                color = "🟢" if net_vol > 0 else "🔴"
+                                st.metric("Net Volume", f"{color} {abs(net_vol):,.0f}")
+                        
+                        # Display broker metrics
+                        broker_cols = st.columns(3)
+                        
+                        with broker_cols[0]:
+                            if 'avg_buy_price_buyers' in broker_data and broker_data['avg_buy_price_buyers'] > 0:
+                                st.metric("Avg Buy Price", f"Rp {broker_data['avg_buy_price_buyers']:,.0f}")
+                        
+                        with broker_cols[1]:
+                            if 'avg_sell_price_buyers' in broker_data and broker_data['avg_sell_price_buyers'] > 0:
+                                st.metric("Avg Sell Price", f"Rp {broker_data['avg_sell_price_buyers']:,.0f}")
+                        
+                        with broker_cols[2]:
+                            if 'daily_summary' in broker_data:
+                                st.metric("Summary", broker_data['daily_summary'])
+                        
+                        # Display top buyers/sellers if available
+                        col_buyer, col_seller = st.columns(2)
+                        
+                        with col_buyer:
+                            st.markdown("##### 🟢 Top Buyers")
+                            if 'top5_buyers' in broker_data and pd.notna(broker_data['top5_buyers']):
+                                buyers_text = broker_data['top5_buyers']
+                                buyers_lines = buyers_text.split('\n')
+                                for line in buyers_lines:
+                                    st.write(line)
+                        
+                        with col_seller:
+                            st.markdown("##### 🔴 Top Sellers")
+                            if 'top5_sellers' in broker_data and pd.notna(broker_data['top5_sellers']):
+                                sellers_text = broker_data['top5_sellers']
+                                sellers_lines = sellers_text.split('\n')
+                                for line in sellers_lines:
+                                    st.write(line)
+                    else:
+                        st.info(f"Tidak ada data broker summary untuk {kode} pada tanggal {broker_used_date}")
+            else:
+                st.info("Broker summary data tidak tersedia")
 
 # ======================================================
 # TRIGGER SCREENING SECTION
@@ -1134,8 +1147,6 @@ trigger_col1, trigger_col2 = st.columns([1, 3])
 with trigger_col1:
     if st.button("Run Trigger Screening", key="btn_trigger_screening", use_container_width=True):
         df_screen = st.session_state.get("scan")
-        
-       
         
         if df_screen is None or df_screen.empty:
             st.warning("Belum ada hasil screening")
@@ -1227,9 +1238,17 @@ if df_trigger is not None and not df_trigger.empty:
             )
         
         # Reorder columns for better display
-        preferred_order = ["Kode", "MajorTrend", "MinorPhase", "RSI", "VOL_BEHAVIOR", 
+        preferred_order = ["Kode", 'Sector','Industry',"MajorTrend", "MinorPhase", "RSI", "VOL_BEHAVIOR", 
                           "ProbHijau", "ProbMerah", "Sample", "Confidence", "MatchType"]
-        
+        if "scan" in st.session_state:
+            scan_df = st.session_state["scan"]
+            if not scan_df.empty and 'Kode' in scan_df.columns:
+                # Merge to get Sector and Industry
+                display_trigger = display_trigger.merge(
+                    scan_df[['Kode', 'Sector', 'Industry']].drop_duplicates(subset=['Kode']),
+                    on='Kode',
+                    how='left'
+                )
         # Only include columns that exist
         display_cols = [col for col in preferred_order if col in display_trigger.columns]
         remaining_cols = [col for col in display_trigger.columns if col not in display_cols]
@@ -1246,6 +1265,18 @@ df_broker, broker_used_date = load_broker_summary(TRADE_DATE)
 if df_broker is not None and not df_broker.empty:
     if show_status("Broker summary", TRADE_DATE, broker_used_date, df_broker):
         if df_trigger is not None and not df_trigger.empty and 'Kode' in df_trigger.columns:
+            if "scan" in st.session_state:
+                scan_df = st.session_state["scan"]
+                if not scan_df.empty and 'Kode' in scan_df.columns:
+                    df_trigger_enriched = df_trigger.merge(
+                        scan_df[['Kode', 'Sector', 'Industry']].drop_duplicates(subset=['Kode']),
+                        on='Kode',
+                        how='left'
+                    )
+                else:
+                    df_trigger_enriched = df_trigger.copy()
+            else:
+                df_trigger_enriched = df_trigger.copy()
             # Merge data
             df_final = df_trigger.merge(
                 df_broker,
@@ -1262,7 +1293,7 @@ if df_broker is not None and not df_broker.empty:
                 
                 with main_col:
                     # Tampilkan tabel utama - TAMBAHKAN AVG PRICE COLUMNS
-                    main_cols = ['Kode', 'MajorTrend', 'MinorPhase', 
+                    main_cols = ['Kode', 'Sector', 'Industry', 'MajorTrend', 'MinorPhase', 
                                'ProbHijau', 'ProbMerah', 'Confidence', 
                                'net_volume', 'avg_buy_price_buyers', 'avg_sell_price_buyers']
                     
