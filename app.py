@@ -15,7 +15,7 @@ from datetime import datetime, timedelta
 # Import modules
 from engine import build_probability_table_from_ticker, backtest
 from engine_v2 import process_stock, fetch_data, add_indicators
-from utils import data_utils, cache_manager, date_utils, format_utils, validation_utils
+from utils import  cache_manager,  format_utils
 
 
 # ======================================================
@@ -1136,6 +1136,7 @@ if event.selection.rows:
                         st.info(f"Tidak ada data broker summary untuk {kode} pada tanggal {broker_used_date}")
             else:
                 st.info("Broker summary data tidak tersedia")
+                
 
 # ======================================================
 # TRIGGER SCREENING SECTION
