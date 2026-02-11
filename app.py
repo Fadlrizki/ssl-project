@@ -808,7 +808,12 @@ if event.selection.rows:
     st.header(f"📊 Detailed Analysis: {kode}")
     
     # Create tabs
-    tab1, tab2, tab3 = st.tabs(["📈 Chart & Metrics", "💰 Value Trx", "🤖 Probability"])
+    tab1, tab2, tab3, tab4 = st.tabs([
+                                        "📈 Chart & Metrics", 
+                                        "💰 Value Trx", 
+                                        "🤖 Probability",
+                                        "📊 Broker Summary"  # Tab baru
+                                    ])
     
     with tab1:
         # Refresh button
