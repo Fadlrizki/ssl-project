@@ -808,11 +808,11 @@ if event.selection.rows:
     st.header(f"📊 Detailed Analysis: {kode}")
     
     # Create tabs
-    tab1, tab2, tab3, tab4 = st.tabs([
+    tab1, tab2, tab3 = st.tabs([
                                         "📈 Chart & Metrics", 
                                         "💰 Value Trx", 
                                         "🤖 Probability",
-                                        "📊 Broker Summary"  # Tab baru
+                                       
                                     ])
     
     with tab1:
@@ -1073,74 +1073,74 @@ if event.selection.rows:
             else:
                 st.info("No probability table available for this stock")
     
-        with tab4:
-        # Broker Summary
-            st.subheader("📊 Broker Summary Integration")
+        # with tab4:
+        # # Broker Summary
+        #     st.subheader("📊 Broker Summary Integration")
             
-            TRADE_DATE = TODAY
-            df_broker, broker_used_date = load_broker_summary(TRADE_DATE)
+        #     TRADE_DATE = TODAY
+        #     df_broker, broker_used_date = load_broker_summary(TRADE_DATE)
             
-            if df_broker is not None and not df_broker.empty:
-                if show_status("Broker summary", TRADE_DATE, broker_used_date, df_broker):
-                    # Try to merge with current stock
-                    if kode in df_broker['stock'].values:
-                        broker_data = df_broker[df_broker['stock'] == kode].iloc[0]
+        #     if df_broker is not None and not df_broker.empty:
+        #         if show_status("Broker summary", TRADE_DATE, broker_used_date, df_broker):
+        #             # Try to merge with current stock
+        #             if kode in df_broker['stock'].values:
+        #                 broker_data = df_broker[df_broker['stock'] == kode].iloc[0]
                         
-                        # TAMBAH INI: Display Sector and Industry
-                        st.markdown("##### 📊 Company Info")
-                        info_cols = st.columns(3)
+        #                 # TAMBAH INI: Display Sector and Industry
+        #                 st.markdown("##### 📊 Company Info")
+        #                 info_cols = st.columns(3)
                         
-                        with info_cols[0]:
-                            if 'Sector' in row:
-                                st.metric("Sector", row['Sector'])
+        #                 with info_cols[0]:
+        #                     if 'Sector' in row:
+        #                         st.metric("Sector", row['Sector'])
                         
-                        with info_cols[1]:
-                            if 'Industry' in row:
-                                st.metric("Industry", row['Industry'])
+        #                 with info_cols[1]:
+        #                     if 'Industry' in row:
+        #                         st.metric("Industry", row['Industry'])
                         
-                        with info_cols[2]:
-                            if 'net_volume' in broker_data:
-                                net_vol = broker_data['net_volume']
-                                color = "🟢" if net_vol > 0 else "🔴"
-                                st.metric("Net Volume", f"{color} {abs(net_vol):,.0f}")
+        #                 with info_cols[2]:
+        #                     if 'net_volume' in broker_data:
+        #                         net_vol = broker_data['net_volume']
+        #                         color = "🟢" if net_vol > 0 else "🔴"
+        #                         st.metric("Net Volume", f"{color} {abs(net_vol):,.0f}")
                         
-                        # Display broker metrics
-                        broker_cols = st.columns(3)
+        #                 # Display broker metrics
+        #                 broker_cols = st.columns(3)
                         
-                        with broker_cols[0]:
-                            if 'avg_buy_price_buyers' in broker_data and broker_data['avg_buy_price_buyers'] > 0:
-                                st.metric("Avg Buy Price", f"Rp {broker_data['avg_buy_price_buyers']:,.0f}")
+        #                 with broker_cols[0]:
+        #                     if 'avg_buy_price_buyers' in broker_data and broker_data['avg_buy_price_buyers'] > 0:
+        #                         st.metric("Avg Buy Price", f"Rp {broker_data['avg_buy_price_buyers']:,.0f}")
                         
-                        with broker_cols[1]:
-                            if 'avg_sell_price_sellers' in broker_data and broker_data['avg_sell_price_sellers'] > 0:
-                                st.metric("Avg Sell Price", f"Rp {broker_data['avg_sell_price_sellers']:,.0f}")
+        #                 with broker_cols[1]:
+        #                     if 'avg_sell_price_sellers' in broker_data and broker_data['avg_sell_price_sellers'] > 0:
+        #                         st.metric("Avg Sell Price", f"Rp {broker_data['avg_sell_price_sellers']:,.0f}")
                         
-                        with broker_cols[2]:
-                            if 'daily_summary' in broker_data:
-                                st.metric("Summary", broker_data['daily_summary'])
+        #                 with broker_cols[2]:
+        #                     if 'daily_summary' in broker_data:
+        #                         st.metric("Summary", broker_data['daily_summary'])
                         
-                        # Display top buyers/sellers if available
-                        col_buyer, col_seller = st.columns(2)
+        #                 # Display top buyers/sellers if available
+        #                 col_buyer, col_seller = st.columns(2)
                         
-                        with col_buyer:
-                            st.markdown("##### 🟢 Top Buyers")
-                            if 'top5_buyers' in broker_data and pd.notna(broker_data['top5_buyers']):
-                                buyers_text = broker_data['top5_buyers']
-                                buyers_lines = buyers_text.split('\n')
-                                for line in buyers_lines:
-                                    st.write(line)
+        #                 with col_buyer:
+        #                     st.markdown("##### 🟢 Top Buyers")
+        #                     if 'top5_buyers' in broker_data and pd.notna(broker_data['top5_buyers']):
+        #                         buyers_text = broker_data['top5_buyers']
+        #                         buyers_lines = buyers_text.split('\n')
+        #                         for line in buyers_lines:
+        #                             st.write(line)
                         
-                        with col_seller:
-                            st.markdown("##### 🔴 Top Sellers")
-                            if 'top5_sellers' in broker_data and pd.notna(broker_data['top5_sellers']):
-                                sellers_text = broker_data['top5_sellers']
-                                sellers_lines = sellers_text.split('\n')
-                                for line in sellers_lines:
-                                    st.write(line)
-                    else:
-                        st.info(f"Tidak ada data broker summary untuk {kode} pada tanggal {broker_used_date}")
-            else:
-                st.info("Broker summary data tidak tersedia")
+        #                 with col_seller:
+        #                     st.markdown("##### 🔴 Top Sellers")
+        #                     if 'top5_sellers' in broker_data and pd.notna(broker_data['top5_sellers']):
+        #                         sellers_text = broker_data['top5_sellers']
+        #                         sellers_lines = sellers_text.split('\n')
+        #                         for line in sellers_lines:
+        #                             st.write(line)
+        #             else:
+        #                 st.info(f"Tidak ada data broker summary untuk {kode} pada tanggal {broker_used_date}")
+        #     else:
+        #         st.info("Broker summary data tidak tersedia")
                 
 
 # ======================================================
