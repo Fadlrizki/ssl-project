@@ -910,13 +910,7 @@ def volume_behavior(df: pd.DataFrame):
         vol_ratio = volume / vol_ma20
         
         # =============================
-        # 1. LOW ACTIVITY
-        # =============================
-        if vol_ratio < 1.1:
-            return "VOL_NEUTRAL", round(vol_ratio, 2), volume, vol_ma20
-        
-        # =============================
-        # 2. ABSORPTION (Bullish)
+        # 1. ABSORPTION (Bullish)
         # Volume tinggi, range kecil, lower wick panjang
         # =============================
         absorption = (
@@ -930,7 +924,7 @@ def volume_behavior(df: pd.DataFrame):
             return "VOL_ABSORPTION", round(vol_ratio, 2), volume, vol_ma20
         
         # =============================
-        # 3. DISTRIBUTION (Bearish)
+        # 2. DISTRIBUTION (Bearish)
         # Volume tinggi, range kecil, upper wick panjang
         # =============================
         distribution = (
@@ -944,7 +938,7 @@ def volume_behavior(df: pd.DataFrame):
             return "VOL_DISTRIBUTION", round(vol_ratio, 2), volume, vol_ma20
         
         # =============================
-        # 4. EXPANSION (Strong Move)
+        # 3. EXPANSION (Strong Move)
         # Volume tinggi, body besar
         # =============================
         expansion = (
@@ -956,11 +950,9 @@ def volume_behavior(df: pd.DataFrame):
             return "VOL_EXPANSION", round(vol_ratio, 2), volume, vol_ma20
         
         # =============================
-        # 5. NEUTRAL (Elevated Volume)
+        # 4. NEUTRAL (Default)
+        # Semua kondisi lain termasuk volume rendah atau normal
         # =============================
-        if vol_ratio >= 1.2:
-            return "VOL_ELEVATED", round(vol_ratio, 2), volume, vol_ma20
-        
         return "VOL_NEUTRAL", round(vol_ratio, 2), volume, vol_ma20
         
     except Exception as e:

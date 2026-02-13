@@ -19,8 +19,8 @@ from utils import data_utils, cache_manager, validation_utils
 # ======================================================
 CACHE_VERSION = "v3"
 PROB_CACHE = f"prob_cache_{CACHE_VERSION}.pkl"
-LOOKBACK_DAYS = 180  # Default lookback period
-MIN_CANDLES = 150  # Minimum candles for backtest
+LOOKBACK_DAYS = 240  # Default lookback period
+MIN_CANDLES = 80  # Minimum candles for backtest
 
 # ======================================================
 # CACHE MANAGEMENT (simplified using utils)
