@@ -507,6 +507,72 @@ def load_stock_list():
 codes = load_stock_list()
 cached_df = load_cache_safe(CACHE_SCREENING)
 
+def render_value_trx_chart(kode, df):
+    """Render Value Trx historical chart"""
+    if df is None or df.empty:
+        return None
+    
+    # Check if we have ValueTrx column
+    if 'ValueTrx' not in df.columns:
+        # Try to calculate approximate Value Trx from Volume * Close
+        if 'Volume' in df.columns and 'Close' in df.columns:
+            df = df.copy()
+            df['ValueTrx'] = df['Volume'] * df['Close']
+        else:
+            return None
+    
+    fig = go.Figure()
+    
+    # Convert to billions for better visualization
+    df_display = df.copy()
+    df_display['ValueTrx_B'] = df_display['ValueTrx'] / 1_000_000_000
+    
+    # Add Value Trx bars
+    colors = ['green' if i == len(df)-1 else 'blue' for i in range(len(df))]
+    colors[-1] = 'red'  # Highlight latest day in red
+    
+    fig.add_trace(
+        go.Bar(
+            x=df_display.index,
+            y=df_display['ValueTrx_B'],
+            name='Value Trx (B)',
+            marker_color=colors,
+            opacity=0.7
+        )
+    )
+    
+    # Add moving average if enough data
+    if len(df_display) >= 20:
+        df_display['ValueTrx_MA20'] = df_display['ValueTrx_B'].rolling(20).mean()
+        fig.add_trace(
+            go.Scatter(
+                x=df_display.index,
+                y=df_display['ValueTrx_MA20'],
+                name='MA20 (B)',
+                line=dict(color='orange', width=2)
+            )
+        )
+    
+    # Layout
+    fig.update_layout(
+        title=f"Value Transaction History - {kode}",
+        yaxis_title="Value (Billion IDR)",
+        xaxis_title="Date",
+        height=400,
+        template="plotly_white",
+        hovermode="x unified",
+        showlegend=True,
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="right",
+            x=1
+        )
+    )
+    
+    return fig
+
 # ======================================================
 # TOP CONFIGURATION BAR
 # ======================================================
