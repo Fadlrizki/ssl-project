@@ -1138,75 +1138,6 @@ if event.selection.rows:
                 )
             else:
                 st.info("No probability table available for this stock")
-    
-        # with tab4:
-        # # Broker Summary
-        #     st.subheader("📊 Broker Summary Integration")
-            
-        #     TRADE_DATE = TODAY
-        #     df_broker, broker_used_date = load_broker_summary(TRADE_DATE)
-            
-        #     if df_broker is not None and not df_broker.empty:
-        #         if show_status("Broker summary", TRADE_DATE, broker_used_date, df_broker):
-        #             # Try to merge with current stock
-        #             if kode in df_broker['stock'].values:
-        #                 broker_data = df_broker[df_broker['stock'] == kode].iloc[0]
-                        
-        #                 # TAMBAH INI: Display Sector and Industry
-        #                 st.markdown("##### 📊 Company Info")
-        #                 info_cols = st.columns(3)
-                        
-        #                 with info_cols[0]:
-        #                     if 'Sector' in row:
-        #                         st.metric("Sector", row['Sector'])
-                        
-        #                 with info_cols[1]:
-        #                     if 'Industry' in row:
-        #                         st.metric("Industry", row['Industry'])
-                        
-        #                 with info_cols[2]:
-        #                     if 'net_volume' in broker_data:
-        #                         net_vol = broker_data['net_volume']
-        #                         color = "🟢" if net_vol > 0 else "🔴"
-        #                         st.metric("Net Volume", f"{color} {abs(net_vol):,.0f}")
-                        
-        #                 # Display broker metrics
-        #                 broker_cols = st.columns(3)
-                        
-        #                 with broker_cols[0]:
-        #                     if 'avg_buy_price_buyers' in broker_data and broker_data['avg_buy_price_buyers'] > 0:
-        #                         st.metric("Avg Buy Price", f"Rp {broker_data['avg_buy_price_buyers']:,.0f}")
-                        
-        #                 with broker_cols[1]:
-        #                     if 'avg_sell_price_sellers' in broker_data and broker_data['avg_sell_price_sellers'] > 0:
-        #                         st.metric("Avg Sell Price", f"Rp {broker_data['avg_sell_price_sellers']:,.0f}")
-                        
-        #                 with broker_cols[2]:
-        #                     if 'daily_summary' in broker_data:
-        #                         st.metric("Summary", broker_data['daily_summary'])
-                        
-        #                 # Display top buyers/sellers if available
-        #                 col_buyer, col_seller = st.columns(2)
-                        
-        #                 with col_buyer:
-        #                     st.markdown("##### 🟢 Top Buyers")
-        #                     if 'top5_buyers' in broker_data and pd.notna(broker_data['top5_buyers']):
-        #                         buyers_text = broker_data['top5_buyers']
-        #                         buyers_lines = buyers_text.split('\n')
-        #                         for line in buyers_lines:
-        #                             st.write(line)
-                        
-        #                 with col_seller:
-        #                     st.markdown("##### 🔴 Top Sellers")
-        #                     if 'top5_sellers' in broker_data and pd.notna(broker_data['top5_sellers']):
-        #                         sellers_text = broker_data['top5_sellers']
-        #                         sellers_lines = sellers_text.split('\n')
-        #                         for line in sellers_lines:
-        #                             st.write(line)
-        #             else:
-        #                 st.info(f"Tidak ada data broker summary untuk {kode} pada tanggal {broker_used_date}")
-        #     else:
-        #         st.info("Broker summary data tidak tersedia")
                 
 
 # ======================================================
@@ -1281,51 +1212,114 @@ if df_trigger is not None and not df_trigger.empty:
         # Format for display
         display_trigger = df_trigger.copy()
         
+        # Merge dengan data screening untuk mendapatkan Volume dan Price
+        if "scan" in st.session_state:
+            scan_df = st.session_state["scan"]
+            if not scan_df.empty and "Kode" in scan_df.columns:
+                # Ambil kolom yang diperlukan dari scan_df
+                scan_cols = ["Kode"]
+                if "Volume" in scan_df.columns and "Volume" not in display_trigger.columns:
+                    scan_cols.append("Volume")
+                if "Price" in scan_df.columns and "Price" not in display_trigger.columns:
+                    scan_cols.append("Price")
+                if "PriceChange%" in scan_df.columns and "PriceChange%" not in display_trigger.columns:
+                    scan_cols.append("PriceChange%")
+                if "Sector" in scan_df.columns and "Sector" not in display_trigger.columns:
+                    scan_cols.append("Sector")
+                if "Industry" in scan_df.columns and "Industry" not in display_trigger.columns:
+                    scan_cols.append("Industry")
+                if "RSI" in scan_df.columns and "RSI" not in display_trigger.columns:
+                    scan_cols.append("RSI")
+                if "VOL_BEHAVIOR" in scan_df.columns and "VOL_BEHAVIOR" not in display_trigger.columns:
+                    scan_cols.append("VOL_BEHAVIOR")
+                
+                # Hanya merge jika ada kolom tambahan
+                if len(scan_cols) > 1:
+                    display_trigger = display_trigger.merge(
+                        scan_df[scan_cols],
+                        on="Kode",
+                        how="left"
+                    )
+        
         # Format percentage columns if they exist
         if "ProbHijau" in display_trigger.columns:
-            display_trigger["ProbHijau"] = display_trigger["ProbHijau"].apply(
+            display_trigger["ProbHijau_Display"] = display_trigger["ProbHijau"].apply(
                 lambda x: f"{x}%" if pd.notna(x) else "N/A"
             )
         
         if "ProbMerah" in display_trigger.columns:
-            display_trigger["ProbMerah"] = display_trigger["ProbMerah"].apply(
+            display_trigger["ProbMerah_Display"] = display_trigger["ProbMerah"].apply(
                 lambda x: f"{x}%" if pd.notna(x) else "N/A"
             )
         
-        # Add RSI from original screening data if available
-        if "RSI" not in display_trigger.columns and "scan" in st.session_state:
-            # Merge with original screening data to get RSI
-            scan_df = st.session_state.get("scan", pd.DataFrame())
-            if not scan_df.empty and "Kode" in scan_df.columns and "RSI" in scan_df.columns:
-                display_trigger = display_trigger.merge(
-                    scan_df[["Kode", "RSI"]],
-                    on="Kode",
-                    how="left"
-                )
+        # Format Volume
+        if "Volume" in display_trigger.columns:
+            display_trigger["Volume_Display"] = display_trigger["Volume"].apply(
+                lambda x: f"{x/1e6:.1f}M" if pd.notna(x) and x >= 1e6 
+                else (f"{x/1e3:.0f}K" if pd.notna(x) and x >= 1e3 
+                      else (f"{x:,.0f}" if pd.notna(x) else "N/A"))
+            )
         
-        # Format RSI if it exists now
+        # Format Price
+        if "Price" in display_trigger.columns:
+            display_trigger["Price_Display"] = display_trigger["Price"].apply(
+                lambda x: f"Rp {x:,.0f}" if pd.notna(x) and x > 0 else "N/A"
+            )
+        
+        # Format Price Change
+        if "PriceChange%" in display_trigger.columns:
+            display_trigger["PriceChange%_Display"] = display_trigger["PriceChange%"].apply(
+                lambda x: f"{x}%" if pd.notna(x) else "N/A"
+            )
+        
+        # Format RSI if it exists
         if "RSI" in display_trigger.columns:
-            display_trigger["RSI"] = display_trigger["RSI"].apply(
+            display_trigger["RSI_Display"] = display_trigger["RSI"].apply(
                 lambda x: f"{x:.1f}" if pd.notna(x) else "N/A"
             )
         
-        # Reorder columns for better display
-        preferred_order = ["Kode", 'Sector','Industry',"MajorTrend", "MinorPhase", "RSI", "VOL_BEHAVIOR", 
-                          "ProbHijau", "ProbMerah", "Sample", "Confidence", "MatchType"]
-        if "scan" in st.session_state:
-            scan_df = st.session_state["scan"]
-            if not scan_df.empty and 'Kode' in scan_df.columns:
-                # Merge to get Sector and Industry
-                display_trigger = display_trigger.merge(
-                    scan_df[['Kode', 'Sector', 'Industry']].drop_duplicates(subset=['Kode']),
-                    on='Kode',
-                    how='left'
-                )
+        # Hapus kolom asli yang sudah dibuat versi display-nya
+        cols_to_drop = []
+        for col in ["ProbHijau", "ProbMerah", "Volume", "Price", "PriceChange%", "RSI"]:
+            if col in display_trigger.columns:
+                cols_to_drop.append(col)
+        
+        if cols_to_drop:
+            display_trigger = display_trigger.drop(columns=cols_to_drop)
+        
+        # Reorder columns for better display - TAMBAHKAN PRICE DAN VOLUME
+        preferred_order = ["Kode", "Price_Display", "PriceChange%_Display", "Volume_Display", 
+                          "MajorTrend", "MinorPhase", "RSI_Display", "VOL_BEHAVIOR", 
+                          "ProbHijau_Display", "ProbMerah_Display", "Sample", "Confidence", "MatchType"]
+        
+        # Tambahkan Sector dan Industry jika ada
+        if "Sector" in display_trigger.columns:
+            preferred_order.insert(2, "Sector")
+        if "Industry" in display_trigger.columns:
+            # Tentukan posisi setelah Sector
+            sector_pos = preferred_order.index("Sector") if "Sector" in preferred_order else 2
+            preferred_order.insert(sector_pos + 1, "Industry")
+        
         # Only include columns that exist
         display_cols = [col for col in preferred_order if col in display_trigger.columns]
         remaining_cols = [col for col in display_trigger.columns if col not in display_cols]
         
         display_trigger = display_trigger[display_cols + remaining_cols]
+        
+        # Rename columns for better display
+        column_rename = {
+            "Price_Display": "Price",
+            "PriceChange%_Display": "Chg %",
+            "Volume_Display": "Volume",
+            "RSI_Display": "RSI",
+            "VOL_BEHAVIOR": "Vol Behavior",
+            "ProbHijau_Display": "Prob HIJAU",
+            "ProbMerah_Display": "Prob MERAH"
+        }
+        
+        # Apply rename
+        rename_dict = {k: v for k, v in column_rename.items() if k in display_trigger.columns}
+        display_trigger = display_trigger.rename(columns=rename_dict)
         
         st.dataframe(display_trigger, use_container_width=True)
 
@@ -1336,6 +1330,479 @@ df_broker, broker_used_date = load_broker_summary(TRADE_DATE)
 
 if df_broker is not None and not df_broker.empty:
     if show_status("Broker summary", TRADE_DATE, broker_used_date, df_broker):
+        if df_trigger is not None and not df_trigger.empty and 'Kode' in df_trigger.columns:
+            # Siapkan df_trigger dengan price dan volume dari scan
+            df_trigger_with_price = df_trigger.copy()
+            
+            if "scan" in st.session_state:
+                scan_df = st.session_state["scan"]
+                if not scan_df.empty and 'Kode' in scan_df.columns:
+                    # Ambil kolom yang diperlukan dari scan_df
+                    scan_cols = ['Kode']
+                    if 'Sector' in scan_df.columns and 'Sector' not in df_trigger_with_price.columns:
+                        scan_cols.append('Sector')
+                    if 'Industry' in scan_df.columns and 'Industry' not in df_trigger_with_price.columns:
+                        scan_cols.append('Industry')
+                    if 'Price' in scan_df.columns and 'Price' not in df_trigger_with_price.columns:
+                        scan_cols.append('Price')
+                    if 'Volume' in scan_df.columns and 'Volume' not in df_trigger_with_price.columns:
+                        scan_cols.append('Volume')
+                    if 'PriceChange%' in scan_df.columns and 'PriceChange%' not in df_trigger_with_price.columns:
+                        scan_cols.append('PriceChange%')
+                    if 'RSI' in scan_df.columns and 'RSI' not in df_trigger_with_price.columns:
+                        scan_cols.append('RSI')
+                    if 'VOL_BEHAVIOR' in scan_df.columns and 'VOL_BEHAVIOR' not in df_trigger_with_price.columns:
+                        scan_cols.append('VOL_BEHAVIOR')
+                    
+                    # Hanya merge jika ada kolom tambahan
+                    if len(scan_cols) > 1:
+                        df_trigger_with_price = df_trigger.merge(
+                            scan_df[scan_cols].drop_duplicates(subset=['Kode']),
+                            on='Kode',
+                            how='left'
+                        )
+            
+            # Merge dengan broker data
+            # Pastikan tidak ada duplikasi kolom dengan menambahkan suffix
+            df_final = df_trigger_with_price.merge(
+                df_broker,
+                left_on="Kode",
+                right_on="stock",
+                how="left",
+                suffixes=('', '_broker')
+            )
+            
+            # Hapus kolom duplikat yang tidak diperlukan
+            if 'stock' in df_final.columns:
+                df_final = df_final.drop(columns=['stock'])
+            
+            if not df_final.empty:
+                st.subheader("📊 Trigger + Broker Summary")
+                
+                # Buat layout dengan dua kolom utama
+                main_col, detail_col = st.columns([2, 1])
+                
+                with main_col:
+                    # Tampilkan tabel utama - TAMBAHKAN PRICE, VOLUME, DAN AVG PRICE COLUMNS
+                    main_cols = ['Kode']
+                    
+                    # Tambahkan Price dan Volume di awal
+                    if 'Price' in df_final.columns:
+                        main_cols.append('Price')
+                    if 'PriceChange%' in df_final.columns:
+                        main_cols.append('PriceChange%')
+                    if 'Volume' in df_final.columns:
+                        main_cols.append('Volume')
+                    
+                    # Tambahkan Sector dan Industry jika ada
+                    if 'Sector' in df_final.columns:
+                        main_cols.append('Sector')
+                    if 'Industry' in df_final.columns:
+                        main_cols.append('Industry')
+                    
+                    # Tambahkan kolom lainnya
+                    main_cols.extend(['MajorTrend', 'MinorPhase', 'RSI', 'VOL_BEHAVIOR',
+                                     'ProbHijau', 'ProbMerah', 'Confidence', 
+                                     'net_volume', 'avg_buy_price_buyers', 
+                                     'avg_sell_price_sellers'])
+                    
+                    # Filter hanya kolom yang ada di df_final
+                    available_cols = [col for col in main_cols if col in df_final.columns]
+                    
+                    if available_cols:
+                        display_df = df_final[available_cols].copy()
+                        
+                        # Buat display columns dengan format yang rapi
+                        display_data = pd.DataFrame()
+                        display_data['Kode'] = display_df['Kode']
+                        
+                        # Format Price
+                        if 'Price' in display_df.columns:
+                            display_data['Price'] = display_df['Price'].apply(
+                                lambda x: f"Rp {x:,.0f}" if pd.notna(x) and x > 0 else "N/A"
+                            )
+                        
+                        # Format Price Change
+                        if 'PriceChange%' in display_df.columns:
+                            display_data['Chg %'] = display_df['PriceChange%'].apply(
+                                lambda x: f"{x:.1f}%" if pd.notna(x) else "N/A"
+                            )
+                        
+                        # Format Volume
+                        if 'Volume' in display_df.columns:
+                            display_data['Volume'] = display_df['Volume'].apply(
+                                lambda x: f"{x/1e6:.1f}M" if pd.notna(x) and x >= 1e6 
+                                else (f"{x/1e3:.0f}K" if pd.notna(x) and x >= 1e3 
+                                      else (f"{x:,.0f}" if pd.notna(x) else "N/A"))
+                            )
+                        
+                        # Tambahkan Sector dan Industry
+                        if 'Sector' in display_df.columns:
+                            display_data['Sector'] = display_df['Sector']
+                        if 'Industry' in display_df.columns:
+                            display_data['Industry'] = display_df['Industry']
+                        
+                        # Tambahkan MajorTrend dan MinorPhase
+                        if 'MajorTrend' in display_df.columns:
+                            display_data['MajorTrend'] = display_df['MajorTrend']
+                        if 'MinorPhase' in display_df.columns:
+                            display_data['MinorPhase'] = display_df['MinorPhase']
+                        if 'RSI' in display_df.columns:
+                            display_data['RSI'] = display_df['RSI'].apply(
+                                lambda x: f"{x:.1f}" if pd.notna(x) else "N/A"
+                            )
+                        if 'VOL_BEHAVIOR' in display_df.columns:
+                            display_data['Vol Behavior'] = display_df['VOL_BEHAVIOR']
+                        
+                        # Format Probabilities
+                        if 'ProbHijau' in display_df.columns:
+                            display_data['Prob HIJAU'] = display_df['ProbHijau'].apply(
+                                lambda x: f"{x:.1f}%" if pd.notna(x) else "N/A"
+                            )
+                        if 'ProbMerah' in display_df.columns:
+                            display_data['Prob MERAH'] = display_df['ProbMerah'].apply(
+                                lambda x: f"{x:.1f}%" if pd.notna(x) else "N/A"
+                            )
+                        
+                        # Format Confidence
+                        if 'Confidence' in display_df.columns:
+                            display_data['Confidence'] = display_df['Confidence']
+                        
+                        # Format net_volume
+                        if 'net_volume' in display_df.columns:
+                            display_data['Net Vol'] = display_df['net_volume'].apply(
+                                lambda x: f"{x:,.0f}" if pd.notna(x) else "N/A"
+                            )
+                        
+                        # Format avg prices
+                        if 'avg_buy_price_buyers' in display_df.columns:
+                            display_data['Avg Buy'] = display_df['avg_buy_price_buyers'].apply(
+                                lambda x: f"Rp {x:,.0f}" if pd.notna(x) and x != 0 else "N/A"
+                            )
+                        
+                        if 'avg_sell_price_sellers' in display_df.columns:
+                            display_data['Avg Sell'] = display_df['avg_sell_price_sellers'].apply(
+                                lambda x: f"Rp {x:,.0f}" if pd.notna(x) and x != 0 else "N/A"
+                            )
+                        
+                        # Styling functions
+                        def color_prob(val):
+                            if isinstance(val, str) and '%' in val:
+                                try:
+                                    prob = float(val.replace('%', ''))
+                                    if prob >= 70:
+                                        return 'background-color: #d4edda; font-weight: bold;'
+                                    elif prob >= 60:
+                                        return 'background-color: #fff3cd;'
+                                except:
+                                    pass
+                            return ''
+                        
+                        def color_price_change(val):
+                            if isinstance(val, str) and '%' in val:
+                                try:
+                                    change = float(val.replace('%', ''))
+                                    if change > 0:
+                                        return 'color: #28a745; font-weight: bold;'
+                                    elif change < 0:
+                                        return 'color: #dc3545; font-weight: bold;'
+                                except:
+                                    pass
+                            return ''
+                        
+                        def color_avg_buy(val):
+                            if isinstance(val, str) and val != 'N/A' and 'Rp' in val:
+                                try:
+                                    price = float(val.replace('Rp ', '').replace(',', ''))
+                                    if price > 10000:
+                                        return 'background-color: #e8f5e9; color: #2e7d32;'
+                                    elif price > 5000:
+                                        return 'background-color: #f1f8e9;'
+                                except:
+                                    pass
+                            return ''
+                        
+                        def color_avg_sell(val):
+                            if isinstance(val, str) and val != 'N/A' and 'Rp' in val:
+                                try:
+                                    price = float(val.replace('Rp ', '').replace(',', ''))
+                                    if price < 1000:
+                                        return 'background-color: #ffebee; color: #c62828;'
+                                except:
+                                    pass
+                            return ''
+                        
+                        def color_net_volume(val):
+                            if isinstance(val, str) and val != 'N/A':
+                                try:
+                                    # Hapus koma dan konversi ke int
+                                    clean_val = val.replace(',', '').replace('N/A', '0')
+                                    volume = int(float(clean_val)) if clean_val else 0
+                                    
+                                    if volume > 0:
+                                        return 'background-color: #e8f5e9; color: #2e7d32; font-weight: bold;'
+                                    elif volume < 0:
+                                        return 'background-color: #ffebee; color: #c62828; font-weight: bold;'
+                                except:
+                                    pass
+                            return ''
+                        
+                        # Apply styling
+                        styled_df = display_data.copy()
+                        
+                        # Apply color to Prob HIJAU if column exists
+                        if 'Prob HIJAU' in styled_df.columns:
+                            styled_df = styled_df.style.applymap(color_prob, subset=['Prob HIJAU'])
+                        
+                        # Apply color to Price Change if column exists
+                        if 'Chg %' in styled_df.columns:
+                            styled_df = styled_df.applymap(color_price_change, subset=['Chg %'])
+                        
+                        # Apply color to Avg Buy if column exists
+                        if 'Avg Buy' in styled_df.columns:
+                            styled_df = styled_df.applymap(color_avg_buy, subset=['Avg Buy'])
+                        
+                        # Apply color to Avg Sell if column exists
+                        if 'Avg Sell' in styled_df.columns:
+                            styled_df = styled_df.applymap(color_avg_sell, subset=['Avg Sell'])
+                        
+                        # Apply color to Net Vol if column exists
+                        if 'Net Vol' in styled_df.columns:
+                            styled_df = styled_df.applymap(color_net_volume, subset=['Net Vol'])
+                        
+                        # Tampilkan tabel
+                        selection = st.dataframe(
+                            styled_df,
+                            use_container_width=True,
+                            height=400,
+                            on_select="rerun",
+                            selection_mode="single-row"
+                        )
+                        
+                        # Download button
+                        st.markdown("---")
+                        
+                        # Download FULL DATA
+                        full_csv = df_final.to_csv(index=False).encode('utf-8')
+                        st.download_button(
+                            "💾 Download CSV (Full Data)",
+                            full_csv,
+                            f"trigger_broker_{TODAY}.csv",
+                            "text/csv",
+                            use_container_width=True,
+                            type="primary",
+                            help="Download semua data termasuk price, volume, broker summary dan avg prices"
+                        )
+                        
+                        # Info kecil tentang apa yang di-download
+                        st.caption(f"📋 File akan berisi {len(df_final)} baris dan {len(df_final.columns)} kolom termasuk price, volume, dan broker data")
+                        
+                        # Tampilkan stats ringkasan
+                        with st.expander("📊 Statistics Summary"):
+                            col1, col2, col3 = st.columns(3)
+                            
+                            with col1:
+                                if 'ProbHijau' in df_final.columns:
+                                    avg_prob = df_final['ProbHijau'].mean()
+                                    st.metric("Avg Prob HIJAU", f"{avg_prob:.1f}%")
+                            
+                            with col2:
+                                if 'net_volume' in df_final.columns:
+                                    total_volume = df_final['net_volume'].sum()
+                                    st.metric("Total Net Volume", f"{total_volume:,.0f}")
+                            
+                            with col3:
+                                if 'avg_buy_price_buyers' in df_final.columns:
+                                    avg_buy_price = df_final['avg_buy_price_buyers'].mean()
+                                    st.metric("Avg Buy Price", f"Rp {avg_buy_price:,.0f}" if not pd.isna(avg_buy_price) else "N/A")
+                
+                with detail_col:
+                    # Kode detail view tetap sama
+                    selected_kode = None
+                    
+                    # Coba ambil dari table selection
+                    try:
+                        if hasattr(selection, 'selection') and selection.selection.rows:
+                            selected_idx = selection.selection.rows[0]
+                            selected_kode = display_data.iloc[selected_idx]['Kode']
+                    except:
+                        pass
+                    
+                    # Fallback ke selectbox
+                    if not selected_kode and 'Kode' in display_data.columns:
+                        selected_kode = st.selectbox(
+                            "Pilih Saham:",
+                            display_data['Kode'].tolist(),
+                            key="broker_detail_select"
+                        )
+                    
+                    if selected_kode:
+                        # Ambil data
+                        selected_data = df_final[df_final['Kode'] == selected_kode].iloc[0]
+                        
+                        # Header
+                        st.markdown(f"### {selected_kode}")
+                        
+                        # Tampilkan price dan volume di detail view
+                        price_info_cols = st.columns(3)
+                        with price_info_cols[0]:
+                            if 'Price' in selected_data and pd.notna(selected_data['Price']):
+                                price = float(selected_data['Price'])
+                                st.metric("Price", f"Rp {price:,.0f}")
+                        
+                        with price_info_cols[1]:
+                            if 'PriceChange%' in selected_data and pd.notna(selected_data['PriceChange%']):
+                                change = float(selected_data['PriceChange%'])
+                                delta_color = "normal" if change > 0 else "inverse"
+                                st.metric("Change", f"{change:+.1f}%", delta_color=delta_color)
+                        
+                        with price_info_cols[2]:
+                            if 'Volume' in selected_data and pd.notna(selected_data['Volume']):
+                                volume = float(selected_data['Volume'])
+                                if volume >= 1e6:
+                                    vol_display = f"{volume/1e6:.1f}M"
+                                elif volume >= 1e3:
+                                    vol_display = f"{volume/1e3:.0f}K"
+                                else:
+                                    vol_display = f"{volume:,.0f}"
+                                st.metric("Volume", vol_display)
+                        
+                        # Metrics card dengan avg prices
+                        with st.container(border=True):
+                            col1, col2, col3 = st.columns([1, 1, 1])
+                            
+                            with col1:
+                                if 'ProbHijau' in selected_data and pd.notna(selected_data['ProbHijau']):
+                                    prob = float(selected_data['ProbHijau'])
+                                    st.metric("Prob. Hijau", f"{prob:.1f}%")
+                            
+                            with col2:
+                                if 'net_volume' in selected_data and pd.notna(selected_data['net_volume']):
+                                    net_vol = float(selected_data['net_volume'])
+                                    color = "🟢" if net_vol > 0 else "🔴"
+                                    st.metric("Net Volume", f"{color} {abs(net_vol):,.0f}")
+                            
+                            with col3:
+                                if 'Confidence' in selected_data:
+                                    confidence = selected_data['Confidence']
+                                    conf_color = {
+                                        'VERY_HIGH': '🟢',
+                                        'HIGH': '🟡',
+                                        'MEDIUM': '🟠',
+                                        'LOW': '🔴',
+                                        'VERY_LOW': '⚫'
+                                    }.get(confidence, '⚪')
+                                    st.metric("Confidence", f"{conf_color} {confidence}")
+                        
+                        # Price metrics card
+                        with st.container(border=True):
+                            st.markdown("**💰 Price Information**")
+                            col_price1, col_price2 = st.columns(2)
+                            
+                            with col_price1:
+                                if 'avg_buy_price_buyers' in selected_data and pd.notna(selected_data['avg_buy_price_buyers']):
+                                    avg_buy = float(selected_data['avg_buy_price_buyers'])
+                                    st.metric("Avg Buy Price", f"Rp {avg_buy:,.0f}")
+                            
+                            with col_price2:
+                                if 'avg_sell_price_sellers' in selected_data and pd.notna(selected_data['avg_sell_price_sellers']):
+                                    avg_sell = float(selected_data['avg_sell_price_sellers'])
+                                    st.metric("Avg Sell Price", f"Rp {avg_sell:,.0f}")
+                            
+                            # Calculate spread jika ada kedua data
+                            if ('avg_buy_price_buyers' in selected_data and 'avg_sell_price_sellers' in selected_data and
+                                pd.notna(selected_data['avg_buy_price_buyers']) and 
+                                pd.notna(selected_data['avg_sell_price_sellers'])):
+                                
+                                avg_buy = float(selected_data['avg_buy_price_buyers'])
+                                avg_sell = float(selected_data['avg_sell_price_sellers'])
+                                spread = avg_buy - avg_sell
+                                spread_pct = (spread / avg_sell * 100) if avg_sell > 0 else 0
+                                
+                                st.caption(f"**Spread:** {spread:,.0f} ({spread_pct:+.1f}%)")
+                        
+                        # Daily summary
+                        if 'daily_summary' in selected_data and pd.notna(selected_data['daily_summary']):
+                            st.info(f"📊 {selected_data['daily_summary']}")
+                        
+                        # Buyer vs Seller comparison
+                        st.markdown("### 🤝 Buyer vs Seller")
+                        
+                        col_buyer, col_seller = st.columns(2)
+                        
+                        with col_buyer:
+                            st.markdown("##### 🟢 **Top Buyers**")
+                            if 'top5_buyers' in selected_data and pd.notna(selected_data['top5_buyers']):
+                                buyers_text = selected_data['top5_buyers']
+                                buyers_lines = buyers_text.split('\n')
+                                for line in buyers_lines:
+                                    if 'Avg Buy:' in line or 'Avg Sell:' in line:
+                                        line_display = f"<div style='background-color: #f8f9fa; padding: 5px; border-radius: 4px; margin: 2px 0;'>{line}</div>"
+                                    else:
+                                        line_display = f"<div style='margin-bottom: 5px;'>{line}</div>"
+                                    
+                                    st.markdown(line_display, unsafe_allow_html=True)
+                            else:
+                                st.info("No buyer data")
+                        
+                        with col_seller:
+                            st.markdown("##### 🔴 **Top Sellers**")
+                            if 'top5_sellers' in selected_data and pd.notna(selected_data['top5_sellers']):
+                                sellers_text = selected_data['top5_sellers']
+                                sellers_lines = sellers_text.split('\n')
+                                for line in sellers_lines:
+                                    if 'Avg Buy:' in line or 'Avg Sell:' in line:
+                                        line_display = f"<div style='background-color: #f8f9fa; padding: 5px; border-radius: 4px; margin: 2px 0;'>{line}</div>"
+                                    else:
+                                        line_display = f"<div style='margin-bottom: 5px;'>{line}</div>"
+                                    
+                                    st.markdown(line_display, unsafe_allow_html=True)
+                            else:
+                                st.info("No seller data")
+                        
+                        # Volume analysis
+                        if 'net_volume' in selected_data and pd.notna(selected_data['net_volume']):
+                            try:
+                                net_vol = float(selected_data['net_volume'])
+                                
+                                price_info = ""
+                                if ('avg_buy_price_buyers' in selected_data and 
+                                    'avg_sell_price_sellers' in selected_data and
+                                    pd.notna(selected_data['avg_buy_price_buyers']) and 
+                                    pd.notna(selected_data['avg_sell_price_sellers'])):
+                                    
+                                    avg_buy = float(selected_data['avg_buy_price_buyers'])
+                                    avg_sell = float(selected_data['avg_sell_price_sellers'])
+                                    price_info = f" | Buy: Rp {avg_buy:,.0f} | Sell: Rp {avg_sell:,.0f}"
+                                
+                                st.markdown(f"### 📊 Volume Analysis {price_info}")
+                                
+                                # Simple bar chart
+                                if net_vol != 0:
+                                    max_val = max(abs(net_vol), 100000)
+                                    percentage = (abs(net_vol) / max_val) * 100
+                                    
+                                    color = "green" if net_vol > 0 else "red"
+                                    label = "Buyer Dominan" if net_vol > 0 else "Seller Dominan"
+                                    
+                                    st.markdown(f"""
+                                    <div style="margin: 10px 0;">
+                                        <div style="background-color: #f0f0f0; height: 20px; border-radius: 10px; overflow: hidden;">
+                                            <div style="background-color: {color}; height: 100%; width: {min(percentage, 100)}%; 
+                                                        display: flex; align-items: center; padding-left: 10px; color: white; font-weight: bold;">
+                                                {label}
+                                            </div>
+                                        </div>
+                                        <div style="text-align: center; margin-top: 5px;">
+                                            <strong>{abs(net_vol):,.0f} lot</strong>
+                                            <div style="font-size: 12px; color: #666;">
+                                                Net: {net_vol:,.0f} lot
+                                            </div>
+                                        </div>
+                                    </div>
+                                    """, unsafe_allow_html=True)
+                            except:
+                                pass
         if df_trigger is not None and not df_trigger.empty and 'Kode' in df_trigger.columns:
             if "scan" in st.session_state:
                 scan_df = st.session_state["scan"]
