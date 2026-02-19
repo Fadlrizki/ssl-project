@@ -1988,23 +1988,31 @@ if df_broker is not None and not df_broker.empty:
                     try:
                         if hasattr(selection, 'selection') and selection.selection.rows:
                             selected_idx = selection.selection.rows[0]
-                            selected_kode = display_df.iloc[selected_idx]['Kode']
+                            selected_kode = display_data.iloc[selected_idx]['Kode']
                     except:
                         pass
                     
-                    # Fallback ke selectbox
-                    if not selected_kode and 'Kode' in display_df.columns:
+                    # Fallback ke selectbox - GUNAKAN KEY YANG UNIK
+                    if not selected_kode and 'Kode' in display_data.columns:
+                        # Buat key unik dengan menambahkan timestamp atau random string
+                        import hashlib
+                        import time
+                        
+                        # Buat key yang unik berdasarkan konten data
+                        data_hash = hashlib.md5(str(display_data['Kode'].tolist()).encode()).hexdigest()[:8]
+                        unique_key = f"broker_detail_select_{data_hash}_{int(time.time())}"
+                        
                         selected_kode = st.selectbox(
                             "Pilih Saham:",
-                            display_df['Kode'].tolist(),
-                            key="broker_detail_select"
+                            display_data['Kode'].tolist(),
+                            key=unique_key
                         )
                     
                     if selected_kode:
                         # Ambil data
                         selected_data = df_final[df_final['Kode'] == selected_kode].iloc[0]
                         
-                        # Header dengan lebih banyak info
+                        # Header
                         st.markdown(f"### {selected_kode}")
                         
                         # Metrics card dengan avg prices
