@@ -1,0 +1,187 @@
+stock,top5_buyers,top5_sellers,net_volume,daily_summary,avg_buy_price_buyers,avg_sell_price_buyers,avg_buy_price_sellers,avg_sell_price_sellers
+CFIN,"1. CC: 13,592 lot (453.97M) [Mix] | Avg Buy: 334
+2. EL: 2,000 lot (66.60M) [Bandar] | Avg Buy: 333
+3. YP: 1,659 lot (55.41M) [Mix] | Avg Buy: 334
+4. MG: 1,355 lot (45.12M) [Mix] | Avg Buy: 333
+5. AZ: 1,163 lot (38.73M) [Retail] | Avg Buy: 333","1. ZP: 12,842 lot (428.92M) [Bandar] | Avg Sell: 334
+2. CP: 11,588 lot (388.39M) [Mix] | Avg Sell: 335
+3. DH: 3,452 lot (113.92M) [Bandar] | Avg Sell: 330
+4. OD: 3,070 lot (102.54M) [Bandar] | Avg Sell: 334
+5. XC: 2,939 lot (98.72M) [Retail] | Avg Sell: 336",-14122,"Buyer: Mix 84%, Seller: Bandar 57% | Avg Buy Price: 333 | Avg Sell Price: 334",333.4,,,333.8
+CLPI,"1. YP: 429 lot (68.43M) [Mix] | Avg Buy: 1,595","1. CC: 255 lot (40.53M) [Mix] | Avg Sell: 1,589
+2. NI: 185 lot (29.47M) [Bandar] | Avg Sell: 1,593
+3. PG: 39 lot (6.24M) [Mix] | Avg Sell: 1,600",-50,"Buyer: Mix 100%, Seller: Mix 61% | Avg Buy Price: 1,595 | Avg Sell Price: 1,594",1595.0,,,1594.0
+ECII,"1. YU: 10,000 lot (246.00M) [Bandar] | Avg Buy: 246
+2. AK: 2,748 lot (66.78M) [Bandar] | Avg Buy: 243","1. XL: 7,564 lot (177.07M) [Retail] | Avg Sell: 234
+2. PD: 2,499 lot (63.05M) [Mix] | Avg Buy: 233 | Avg Sell: 245
+3. CC: 1,352 lot (34.88M) [Mix] | Avg Sell: 258
+4. BQ: 788 lot (18.05M) [Bandar] | Avg Sell: 229",545,"Buyer: Bandar 100%, Seller: Retail 62% | Avg Buy Price: 244 | Avg Sell Price: 242",244.5,,233.0,241.5
+ITMA,"1. AK: 1,197 lot (291.71M) [Bandar] | Avg Buy: 2,437
+2. ZR: 474 lot (113.61M) [Bandar] | Avg Buy: 2,397
+3. YP: 283 lot (67.33M) [Mix] | Avg Buy: 2,379
+4. PC: 225 lot (53.82M) [Bandar] | Avg Buy: 2,392
+5. BK: 138 lot (33.35M) [Bandar] | Avg Buy: 2,417","1. CC: 1,038 lot (254.55M) [Mix] | Avg Buy: 2,405 | Avg Sell: 2,438
+2. ZP: 493 lot (119.40M) [Bandar] | Avg Sell: 2,422
+3. CP: 493 lot (118.32M) [Mix] | Avg Sell: 2,400
+4. ID: 300 lot (72.03M) [Bandar] | Avg Sell: 2,401
+5. KK: 139 lot (33.97M) [Bandar] | Avg Sell: 2,444",-146,"Buyer: Bandar 88%, Seller: Mix 62% | Avg Buy Price: 2,404 | Avg Sell Price: 2,421",2404.4,,2405.0,2421.0
+MDKA,"1. PD: 144,415 lot (55.04B) [Mix] | Avg Buy: 3,811
+2. CC: 62,617 lot (22.37B) [Mix] | Avg Buy: 3,715 | Avg Sell: 3,850
+3. YP: 57,564 lot (21.70B) [Mix] | Avg Buy: 3,770
+4. XL: 34,627 lot (13.06B) [Retail] | Avg Buy: 3,772
+5. LG: 28,885 lot (11.33B) [Bandar] | Avg Buy: 3,913 | Avg Sell: 3,753","1. BK: 158,779 lot (59.46B) [Bandar] | Avg Sell: 3,745
+2. NI: 78,806 lot (29.58B) [Bandar] | Avg Sell: 3,754
+3. BB: 62,361 lot (22.66B) [Mix] | Avg Buy: 3,853 | Avg Sell: 3,642
+4. AK: 43,753 lot (16.75B) [Bandar] | Avg Sell: 3,828
+5. ZP: 41,401 lot (15.71B) [Bandar] | Avg Sell: 3,794",-56992,"Buyer: Mix 81%, Seller: Bandar 84% | Avg Buy Price: 3,796 | Avg Sell Price: 3,753",3796.2,3801.5,3853.0,3752.6
+NOBU,"1. SS: 36,690 lot (2.12B) [Bandar] | Avg Buy: 577
+2. YP: 18,563 lot (1.07B) [Mix] | Avg Buy: 574
+3. PD: 8,970 lot (510.30M) [Mix] | Avg Buy: 569
+4. YU: 5,392 lot (308.73M) [Bandar] | Avg Buy: 573
+5. AI: 4,750 lot (279.30M) [Bandar] | Avg Buy: 588","1. DH: 18,518 lot (1.04B) [Bandar] | Avg Sell: 560
+2. XL: 15,646 lot (863.95M) [Retail] | Avg Buy: 586 | Avg Sell: 558
+3. YB: 10,194 lot (597.78M) [Retail] | Avg Buy: 563 | Avg Sell: 586
+4. AK: 9,503 lot (545.68M) [Bandar] | Avg Sell: 574
+5. KI: 4,574 lot (259.80M) [Bandar] | Avg Sell: 568",15930,"Buyer: Bandar 63%, Seller: Bandar 56% | Avg Buy Price: 576 | Avg Sell Price: 569",576.2,,574.5,569.2
+PGAS,"1. MG: 100,578 lot (24.50B) [Mix] | Avg Buy: 2,436
+2. XL: 51,084 lot (12.52B) [Retail] | Avg Buy: 2,450
+3. RX: 41,464 lot (10.11B) [Bandar] | Avg Buy: 2,439
+4. YP: 33,651 lot (8.25B) [Mix] | Avg Buy: 2,451
+5. SQ: 31,053 lot (7.57B) [Bandar] | Avg Buy: 2,438","1. AK: 126,779 lot (30.99B) [Bandar] | Avg Sell: 2,445
+2. AI: 58,171 lot (14.09B) [Bandar] | Avg Buy: 2,402 | Avg Sell: 2,423
+3. BB: 56,378 lot (13.52B) [Mix] | Avg Buy: 2,449 | Avg Sell: 2,418
+4. GR: 34,521 lot (8.49B) [Bandar] | Avg Buy: 2,426 | Avg Sell: 2,457
+5. YU: 29,859 lot (7.18B) [Bandar] | Avg Buy: 2,444 | Avg Sell: 2,408",-47878,"Buyer: Mix 52%, Seller: Bandar 82% | Avg Buy Price: 2,443 | Avg Sell Price: 2,430",2442.8,,2430.25,2430.2
+SILO,"1. CC: 6,714 lot (1.84B) [Mix] | Avg Buy: 2,733
+2. RX: 4,234 lot (1.15B) [Bandar] | Avg Buy: 2,708
+3. KZ: 2,700 lot (742.23M) [Mix] | Avg Buy: 2,749
+4. AK: 2,584 lot (689.94M) [Bandar] | Avg Buy: 2,674 | Avg Sell: 2,755
+5. YU: 2,305 lot (631.50M) [Bandar] | Avg Buy: 2,740","1. ZP: 12,973 lot (3.53B) [Bandar] | Avg Sell: 2,722
+2. BK: 1,352 lot (367.17M) [Bandar] | Avg Sell: 2,716
+3. BB: 965 lot (260.07M) [Mix] | Avg Sell: 2,695
+4. RF: 800 lot (220.00M) [Bandar] | Avg Sell: 2,750
+5. YP: 718 lot (192.64M) [Mix] | Avg Sell: 2,683",1729,"Buyer: Mix 51%, Seller: Bandar 90% | Avg Buy Price: 2,721 | Avg Sell Price: 2,713",2720.8,2755.0,,2713.2
+SMAR,"1. NI: 1,235 lot (726.67M) [Bandar] | Avg Buy: 5,884
+2. CC: 617 lot (360.27M) [Mix] | Avg Buy: 5,839
+3. TP: 452 lot (247.61M) [Bandar] | Avg Buy: 5,478
+4. XA: 100 lot (59.50M) [Bandar] | Avg Buy: 5,950
+5. BK: 98 lot (56.17M) [Bandar] | Avg Buy: 5,732","1. XL: 729 lot (410.79M) [Retail] | Avg Sell: 5,635
+2. XC: 604 lot (336.76M) [Retail] | Avg Sell: 5,576
+3. DH: 223 lot (130.14M) [Bandar] | Avg Sell: 5,836
+4. CP: 210 lot (116.72M) [Mix] | Avg Sell: 5,558
+5. GR: 172 lot (101.39M) [Bandar] | Avg Sell: 5,895",564,"Buyer: Bandar 75%, Seller: Retail 69% | Avg Buy Price: 5,777 | Avg Sell Price: 5,700",5776.6,,,5700.0
+SRTG,"1. YU: 26,623 lot (4.90B) [Bandar] | Avg Buy: 1,839
+2. AK: 21,915 lot (4.05B) [Bandar] | Avg Buy: 1,850 | Avg Sell: 1,860
+3. TP: 10,233 lot (1.90B) [Bandar] | Avg Buy: 1,854
+4. PD: 10,276 lot (1.89B) [Mix] | Avg Buy: 1,839 | Avg Sell: 1,841
+5. SQ: 5,960 lot (1.11B) [Bandar] | Avg Buy: 1,859","1. ZP: 27,661 lot (5.07B) [Bandar] | Avg Sell: 1,834
+2. DR: 14,775 lot (2.72B) [Retail] | Avg Sell: 1,839
+3. XC: 7,424 lot (1.37B) [Retail] | Avg Sell: 1,845
+4. KI: 7,177 lot (1.31B) [Bandar] | Avg Buy: 1,851 | Avg Sell: 1,819
+5. CC: 6,880 lot (1.28B) [Mix] | Avg Sell: 1,858",11090,"Buyer: Bandar 86%, Seller: Bandar 55% | Avg Buy Price: 1,848 | Avg Sell Price: 1,839",1848.2,1850.5,1851.0,1839.0
+STAR,"1. FS: 6,665 lot (439.22M) [Bandar] | Avg Buy: 659
+2. CP: 205 lot (14.23M) [Mix] | Avg Buy: 694","1. BQ: 6,124 lot (404.69M) [Bandar] | Avg Sell: 661
+2. IH: 5,425 lot (377.04M) [Mix] | Avg Sell: 695
+3. XL: 1,374 lot (94.97M) [Retail] | Avg Sell: 691
+4. AK: 391 lot (26.51M) [Bandar] | Avg Sell: 678
+5. EP: 250 lot (17.38M) [Mix] | Avg Sell: 695",-6694,"Buyer: Bandar 97%, Seller: Bandar 48% | Avg Buy Price: 676 | Avg Sell Price: 684",676.5,,,684.0
+TINS,"1. XL: 48,141 lot (20.89B) [Retail] | Avg Buy: 4,344 | Avg Sell: 4,595
+2. PD: 37,776 lot (16.84B) [Mix] | Avg Buy: 4,459
+3. AZ: 24,209 lot (10.89B) [Retail] | Avg Buy: 4,498
+4. LG: 23,141 lot (10.10B) [Bandar] | Avg Buy: 4,364
+5. BB: 22,143 lot (9.74B) [Mix] | Avg Buy: 4,399","1. AK: 108,801 lot (47.86B) [Bandar] | Avg Sell: 4,399
+2. BK: 36,952 lot (16.06B) [Bandar] | Avg Buy: 4,589 | Avg Sell: 4,374
+3. CC: 30,138 lot (13.54B) [Mix] | Avg Sell: 4,492
+4. DR: 23,952 lot (11.02B) [Retail] | Avg Sell: 4,601
+5. OD: 18,802 lot (8.19B) [Bandar] | Avg Sell: 4,353",-63235,"Buyer: Retail 47%, Seller: Bandar 75% | Avg Buy Price: 4,413 | Avg Sell Price: 4,444",4412.8,4595.0,4589.0,4443.8
+TKIM,"1. PD: 6,733 lot (7.38B) [Mix] | Avg Buy: 10,926 | Avg Sell: 10,793
+2. HP: 5,205 lot (5.79B) [Bandar] | Avg Buy: 11,132
+3. XL: 3,244 lot (3.49B) [Retail] | Avg Buy: 10,755 | Avg Sell: 10,848
+4. LG: 2,081 lot (2.32B) [Bandar] | Avg Buy: 11,120 | Avg Sell: 10,965
+5. BB: 1,749 lot (1.92B) [Mix] | Avg Buy: 10,965","1. YP: 5,177 lot (5.51B) [Mix] | Avg Buy: 10,736 | Avg Sell: 10,669
+2. ZP: 2,796 lot (3.01B) [Bandar] | Avg Sell: 10,764
+3. AI: 2,588 lot (2.65B) [Bandar] | Avg Sell: 10,224
+4. IF: 2,135 lot (2.25B) [Mix] | Avg Sell: 10,560
+5. DH: 1,631 lot (1.78B) [Bandar] | Avg Sell: 10,919",4685,"Buyer: Mix 45%, Seller: Mix 51% | Avg Buy Price: 10,980 | Avg Sell Price: 10,627",10979.6,10868.666666666666,10736.0,10627.2
+TOTL,"1. GR: 9,195 lot (984.78M) [Bandar] | Avg Buy: 1,071
+2. YP: 2,402 lot (258.24M) [Mix] | Avg Buy: 1,075
+3. KK: 1,782 lot (192.02M) [Bandar] | Avg Buy: 1,077 | Avg Sell: 1,070
+4. AZ: 647 lot (69.88M) [Retail] | Avg Buy: 1,080
+5. YB: 265 lot (28.70M) [Retail] | Avg Buy: 1,070 | Avg Sell: 1,056","1. CC: 16,610 lot (1.78B) [Mix] | Avg Sell: 1,073
+2. DR: 6,060 lot (645.39M) [Retail] | Avg Sell: 1,065
+3. XL: 4,744 lot (508.48M) [Retail] | Avg Buy: 1,074 | Avg Sell: 1,072
+4. PD: 1,217 lot (130.71M) [Mix] | Avg Sell: 1,074
+5. ZP: 747 lot (80.45M) [Bandar] | Avg Sell: 1,077",-15087,"Buyer: Bandar 77%, Seller: Mix 61% | Avg Buy Price: 1,075 | Avg Sell Price: 1,072",1074.6,1063.0,1074.0,1072.2
+WEHA,"1. CC: 16,509 lot (244.33M) [Mix] | Avg Buy: 148
+2. BQ: 7,929 lot (114.97M) [Bandar] | Avg Buy: 145
+3. KI: 4,459 lot (63.32M) [Bandar] | Avg Buy: 142
+4. MG: 3,889 lot (52.13M) [Mix] | Avg Buy: 143 | Avg Sell: 149
+5. AF: 3,000 lot (43.20M) [Retail] | Avg Buy: 144","1. XL: 9,177 lot (132.15M) [Retail] | Avg Sell: 144
+2. PD: 7,710 lot (111.02M) [Mix] | Avg Sell: 144
+3. SQ: 5,795 lot (84.03M) [Bandar] | Avg Sell: 145
+4. TP: 4,500 lot (66.15M) [Bandar] | Avg Sell: 147
+5. YP: 3,797 lot (55.06M) [Mix] | Avg Sell: 145",4807,"Buyer: Mix 57%, Seller: Mix 37% | Avg Buy Price: 144 | Avg Sell Price: 145",144.4,149.0,,145.0
+HRTA,"1. CC: 67,042 lot (20.49B) [Mix] | Avg Buy: 3,112 | Avg Sell: 3,307
+2. YP: 63,265 lot (20.44B) [Mix] | Avg Buy: 3,230
+3. XL: 61,092 lot (19.98B) [Retail] | Avg Buy: 3,270
+4. XC: 24,355 lot (8.14B) [Retail] | Avg Buy: 3,301 | Avg Sell: 3,125
+5. EP: 25,106 lot (8.04B) [Mix] | Avg Buy: 3,203","1. AK: 160,467 lot (51.67B) [Bandar] | Avg Sell: 3,220
+2. LG: 25,276 lot (8.31B) [Bandar] | Avg Sell: 3,287
+3. BK: 21,368 lot (6.88B) [Bandar] | Avg Sell: 3,220
+4. AZ: 19,620 lot (6.05B) [Retail] | Avg Buy: 3,308 | Avg Sell: 3,109
+5. AI: 15,100 lot (4.97B) [Bandar] | Avg Sell: 3,292",-971,"Buyer: Mix 65%, Seller: Bandar 92% | Avg Buy Price: 3,223 | Avg Sell Price: 3,226",3223.2,3216.0,3308.0,3225.6
+GHON,"1. YU: 100 lot (17.85M) [Bandar] | Avg Buy: 1,785","1. EP: 90 lot (16.07M) [Mix] | Avg Sell: 1,785",10,"Buyer: Bandar 100%, Seller: Mix 100% | Avg Buy Price: 1,785 | Avg Sell Price: 1,785",1785.0,,,1785.0
+TCPI,"1. AK: 1,081 lot (1.32B) [Bandar] | Avg Buy: 12,207
+2. AG: 910 lot (1.11B) [Bandar] | Avg Buy: 12,236
+3. TP: 803 lot (991.59M) [Bandar] | Avg Buy: 12,336 | Avg Sell: 12,171
+4. ZP: 588 lot (725.42M) [Bandar] | Avg Buy: 12,337
+5. KI: 246 lot (300.44M) [Bandar] | Avg Buy: 12,213","1. CC: 2,386 lot (2.92B) [Mix] | Avg Sell: 12,244
+2. YU: 1,231 lot (1.50B) [Bandar] | Avg Sell: 12,211
+3. BK: 256 lot (312.91M) [Bandar] | Avg Sell: 12,223
+4. CP: 101 lot (123.36M) [Mix] | Avg Sell: 12,214
+5. LG: 40 lot (48.50M) [Bandar] | Avg Sell: 12,125",-386,"Buyer: Bandar 100%, Seller: Mix 62% | Avg Buy Price: 12,266 | Avg Sell Price: 12,203",12265.8,12171.0,,12203.4
+IDEA,"1. XA: 63,349 lot (810.87M) [Bandar] | Avg Buy: 128
+2. YP: 6,117 lot (81.53M) [Mix] | Avg Buy: 133
+3. NI: 4,455 lot (57.02M) [Bandar] | Avg Buy: 128
+4. IU: 2,350 lot (32.84M) [Bandar] | Avg Buy: 137 | Avg Sell: 127
+5. QA: 1,700 lot (23.80M) [Bandar] | Avg Buy: 140","1. XL: 18,417 lot (228.37M) [Retail] | Avg Sell: 124
+2. BQ: 15,414 lot (183.76M) [Bandar] | Avg Buy: 136 | Avg Sell: 123
+3. KI: 4,571 lot (61.71M) [Bandar] | Avg Sell: 135
+4. AK: 3,542 lot (48.21M) [Bandar] | Avg Sell: 136
+5. AI: 2,000 lot (26.60M) [Bandar] | Avg Sell: 133",34027,"Buyer: Bandar 92%, Seller: Bandar 58% | Avg Buy Price: 133 | Avg Sell Price: 130",133.2,127.0,136.0,130.2
+NASI,"1. PG: 86,338 lot (1.52B) [Mix] | Avg Buy: 176
+2. AK: 55,201 lot (963.79M) [Bandar] | Avg Buy: 175
+3. CC: 33,095 lot (603.50M) [Mix] | Avg Buy: 182
+4. QA: 14,216 lot (246.09M) [Bandar] | Avg Buy: 173
+5. BK: 14,073 lot (235.59M) [Bandar] | Avg Buy: 167","1. XL: 88,924 lot (1.55B) [Retail] | Avg Sell: 175
+2. YP: 46,666 lot (824.01M) [Mix] | Avg Sell: 177
+3. CP: 23,036 lot (407.04M) [Mix] | Avg Sell: 177
+4. XC: 22,485 lot (381.11M) [Retail] | Avg Sell: 169
+5. PD: 18,482 lot (325.52M) [Mix] | Avg Sell: 176",3330,"Buyer: Mix 59%, Seller: Retail 56% | Avg Buy Price: 175 | Avg Sell Price: 175",174.6,,,174.8
+EURO,"1. XL: 4,708 lot (588.55M) [Retail] | Avg Buy: 1,295 | Avg Sell: 1,420
+2. BR: 2,500 lot (342.50M) [Bandar] | Avg Buy: 1,370
+3. YP: 2,623 lot (333.08M) [Mix] | Avg Buy: 1,295 | Avg Sell: 1,420
+4. ID: 2,000 lot (284.00M) [Bandar] | Avg Buy: 1,420
+5. BQ: 1,450 lot (205.90M) [Bandar] | Avg Buy: 1,420","1. YB: 5,513 lot (718.62M) [Retail] | Avg Sell: 1,304
+2. MG: 3,550 lot (459.73M) [Mix] | Avg Sell: 1,295
+3. NI: 3,170 lot (411.76M) [Bandar] | Avg Sell: 1,299
+4. ZP: 1,529 lot (207.57M) [Bandar] | Avg Sell: 1,358
+5. SQ: 1,051 lot (136.10M) [Bandar] | Avg Sell: 1,295",-1532,"Buyer: Bandar 45%, Seller: Bandar 39% | Avg Buy Price: 1,360 | Avg Sell Price: 1,310",1360.0,1420.0,,1310.2
+KING,"1. XC: 3,964 lot (95.14M) [Retail] | Avg Buy: 240
+2. SH: 3,877 lot (94.12M) [Bandar] | Avg Buy: 243
+3. AZ: 2,599 lot (63.68M) [Retail] | Avg Buy: 245
+4. CC: 2,152 lot (53.15M) [Mix] | Avg Buy: 247
+5. PO: 1,388 lot (34.01M) [Bandar] | Avg Buy: 245","1. CP: 9,145 lot (220.39M) [Mix] | Avg Sell: 241
+2. XL: 1,887 lot (46.29M) [Retail] | Avg Buy: 249 | Avg Sell: 246
+3. YP: 1,851 lot (46.09M) [Mix] | Avg Sell: 249
+4. MG: 1,099 lot (26.71M) [Mix] | Avg Sell: 243
+5. IU: 213 lot (5.54M) [Bandar] | Avg Sell: 260",-215,"Buyer: Retail 47%, Seller: Mix 85% | Avg Buy Price: 244 | Avg Sell Price: 248",244.0,,249.0,247.8
+DGNS,"1. DH: 8,517 lot (258.74M) [Bandar] | Avg Buy: 304
+2. PC: 8,000 lot (244.80M) [Bandar] | Avg Buy: 306
+3. PG: 7,887 lot (239.76M) [Mix] | Avg Buy: 304
+4. FZ: 7,000 lot (217.00M) [Bandar] | Avg Buy: 310
+5. NI: 1,977 lot (61.88M) [Bandar] | Avg Buy: 313","1. YJ: 8,000 lot (243.20M) [Retail] | Avg Sell: 304
+2. YP: 7,495 lot (230.18M) [Mix] | Avg Buy: 301 | Avg Sell: 306
+3. MG: 4,050 lot (122.31M) [Mix] | Avg Sell: 302
+4. DR: 2,493 lot (74.54M) [Retail] | Avg Sell: 299
+5. XA: 1,882 lot (58.91M) [Bandar] | Avg Sell: 313",9461,"Buyer: Bandar 76%, Seller: Mix 48% | Avg Buy Price: 307 | Avg Sell Price: 305",307.4,,301.0,304.8
