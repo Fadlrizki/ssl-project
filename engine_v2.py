@@ -33,6 +33,11 @@ EXTRA_CONF = 2
 MAX_CONF = BASE_CONF + EXTRA_CONF
 
 # ======================================================
+# VOLUME FILTER - TAMBAHKAN DI SINI
+# ======================================================
+MIN_VOLUME = 1000  # Minimum volume threshold
+
+# ======================================================
 # VALUE TRX FUNCTIONS (NEW ADDITION)
 # ======================================================
 import yfinance as yf
@@ -1105,11 +1110,11 @@ def final_decision(
     return "WAIT"
 
 # ======================================================
-# MAIN STOCK PROCESSING FUNCTION - UPDATED WITH VALUE TRX
+# MAIN STOCK PROCESSING FUNCTION - UPDATED WITH VOLUME FILTER
 # ======================================================
 def process_stock(kode: str, use_cache: bool = True, include_value_trx: bool = False):
     """
-    Process a single stock for screening - DENGAN VALUE TRX OPTIONAL
+    Process a single stock for screening - DENGAN VOLUME FILTER
     
     Args:
         kode: Kode saham (contoh: "BBCA")
@@ -1133,13 +1138,21 @@ def process_stock(kode: str, use_cache: bool = True, include_value_trx: bool = F
             print(f"  No daily data for {kode}")
             return None
         
+        # =========================
+        # 2. VOLUME FILTER - CEK VOLUME HARI INI
+        # =========================
+        last_volume = d1["Volume"].iloc[-1] if not d1.empty else 0
+        if last_volume < MIN_VOLUME:
+            print(f"  Volume {kode} ({last_volume:,.0f}) di bawah minimum {MIN_VOLUME:,.0f} - SKIP")
+            return None
+        
         # Basic validation
-        if "Volume" not in d1.columns or d1["Volume"].iloc[-1] <= 0:
+        if "Volume" not in d1.columns or last_volume <= 0:
             print(f"  Invalid volume for {kode}")
             return None
         
         # =========================
-        # 2. ADD INDICATORS
+        # 3. ADD INDICATORS
         # =========================
         d1 = add_indicators(d1.copy())
         if d1 is None or d1.empty:
@@ -1147,7 +1160,7 @@ def process_stock(kode: str, use_cache: bool = True, include_value_trx: bool = F
             return None
         
         # =========================
-        # 3. VALUE TRX CALCULATION
+        # 4. VALUE TRX CALCULATION
         # =========================
         value_trx_metrics = {}
         if include_value_trx:
@@ -1170,12 +1183,12 @@ def process_stock(kode: str, use_cache: bool = True, include_value_trx: bool = F
                 )
         
         # =========================
-        # 4. MAJOR TREND
+        # 5. MAJOR TREND
         # =========================
         major = major_trend_daily(d1)
         
         # =========================
-        # 5. MINOR PHASE (try intraday first)
+        # 6. MINOR PHASE (try intraday first)
         # =========================
         minor = "NEUTRAL"
         why = []
@@ -1207,18 +1220,18 @@ def process_stock(kode: str, use_cache: bool = True, include_value_trx: bool = F
             stage2 = stage2_trigger(d1, setup)
         
         # =========================
-        # 6. VOLUME ANALYSIS
+        # 7. VOLUME ANALYSIS
         # =========================
         vol_behavior, vol_ratio, volume, vol_ma20 = volume_behavior(d1)
         
         # =========================
-        # 7. CANDLE ANALYSIS
+        # 8. CANDLE ANALYSIS
         # =========================
         candle_label, candle_red, candle_green = latest_candle_info(d1)
         candle_effect = 1 if candle_green else -1 if candle_red else 0
         
         # =========================
-        # 8. PRICE METRICS
+        # 9. PRICE METRICS
         # =========================
         last_idx = len(d1) - 1
         price_today = float(d1["Close"].iloc[last_idx])
@@ -1237,7 +1250,7 @@ def process_stock(kode: str, use_cache: bool = True, include_value_trx: bool = F
         dist_to_sma50 = compute_dist_sma50(d1)
         
         # =========================
-        # 9. CONFIDENCE ADJUSTMENTS
+        # 10. CONFIDENCE ADJUSTMENTS
         # =========================
         # Boost confidence for favorable conditions
         if minor == "TREND_CONTINUE":
@@ -1260,12 +1273,12 @@ def process_stock(kode: str, use_cache: bool = True, include_value_trx: bool = F
         confidence_pct = round((confidence / 7) * 100) if 7 > 0 else 0
         
         # =========================
-        # 10. FINAL DECISION
+        # 11. FINAL DECISION
         # =========================
         final_dec = final_decision(major, minor, setup, stage2, vol_behavior)
         
         # =========================
-        # 11. VALIDATION GUARDS
+        # 12. VALIDATION GUARDS
         # =========================
         if not validation_utils.validate_price_data(price_today):
             print(f"  Invalid price for {kode}: {price_today}")
@@ -1276,7 +1289,7 @@ def process_stock(kode: str, use_cache: bool = True, include_value_trx: bool = F
             return None
         
         # =========================
-        # 12. RETURN RESULTS - WITH OPTIONAL VALUE TRX
+        # 13. RETURN RESULTS - WITH OPTIONAL VALUE TRX
         # =========================
         result = {
             "Kode": kode,
@@ -1322,7 +1335,7 @@ def process_stock(kode: str, use_cache: bool = True, include_value_trx: bool = F
                 "ValueTrx_Status": value_trx_metrics.get('status', 'UNKNOWN')
             })
         
-        print(f"  ✓ Processed {kode}: {major}/{minor}/{final_dec}")
+        print(f"  ✓ Processed {kode}: Volume: {volume:,.0f} | {major}/{minor}/{final_dec}")
         
         # Tambahkan log value trx jika ada
         if include_value_trx and value_trx_metrics.get('total_value', 0) > 0:
@@ -1352,7 +1365,10 @@ def batch_process_stocks(stock_list: list, include_value_trx: bool = False) -> p
     
     print(f"Batch processing {len(stock_list)} stocks...")
     print(f"Include Value Trx: {include_value_trx}")
+    print(f"Minimum Volume: {MIN_VOLUME:,.0f}")
     print("=" * 60)
+    
+    volume_filtered = 0
     
     for i, kode in enumerate(stock_list, 1):
         print(f"\n[{i}/{len(stock_list)}] ", end="")
@@ -1365,20 +1381,26 @@ def batch_process_stocks(stock_list: list, include_value_trx: bool = False) -> p
         
         if result:
             results.append(result)
+        else:
+            volume_filtered += 1
     
     # Convert to DataFrame
     if results:
         df_results = pd.DataFrame(results)
+        
+        print(f"\n{'=' * 60}")
+        print(f"Processed: {len(results)} stocks (filtered out: {volume_filtered} due to volume < {MIN_VOLUME:,.0f})")
         
         # Sort by Value Trx jika ada
         if include_value_trx and "ValueTrx_B" in df_results.columns:
             df_results = df_results.sort_values("ValueTrx_B", ascending=False)
             print(f"\nTop 5 by Value Trx:")
             for _, row in df_results.head().iterrows():
-                print(f"  {row['Kode']}: {row.get('ValueTrx_Rp', 'Rp 0')}")
+                print(f"  {row['Kode']}: {row.get('ValueTrx_Rp', 'Rp 0')} (Vol: {row['Volume']:,.0f})")
         
         return df_results
     
+    print(f"No valid stocks after filtering (min volume: {MIN_VOLUME:,.0f})")
     return pd.DataFrame()
 
 # ======================================================
@@ -1453,10 +1475,11 @@ def extract_market_state(df: pd.DataFrame, idx: int) -> dict:
 # ======================================================
 if __name__ == "__main__":
     # Test the engine
-    test_codes = ["BBCA", "BBRI", "TLKM"]
+    test_codes = ["BBCA", "BBRI", "TLKM", "BMRI", "ASII"]
     
     print("Testing engine_v2.py")
     print("=" * 50)
+    print(f"Minimum Volume: {MIN_VOLUME:,.0f}")
     
     # Test tanpa value trx (default)
     print("\n--- Test tanpa Value Trx ---")
@@ -1466,12 +1489,13 @@ if __name__ == "__main__":
         
         if result:
             print(f"  Price: {result['Price']:,}")
+            print(f"  Volume: {result['Volume']:,.0f}")
             print(f"  Major Trend: {result['MajorTrend']}")
             print(f"  Minor Phase: {result['MinorPhase']}")
             print(f"  Final Decision: {result['FinalDecision']}")
             print(f"  RSI: {result['RSI']}, Stoch: {result['Stoch_K']}")
         else:
-            print(f"  Failed to process {kode}")
+            print(f"  Failed to process {kode} (volume mungkin < {MIN_VOLUME:,.0f})")
     
     # Test dengan value trx
     print("\n\n--- Test dengan Value Trx ---")
@@ -1481,12 +1505,13 @@ if __name__ == "__main__":
         
         if result:
             print(f"  Price: {result['Price']:,}")
+            print(f"  Volume: {result['Volume']:,.0f}")
             print(f"  Major Trend: {result['MajorTrend']}")
             if 'ValueTrx_Rp' in result:
                 print(f"  Value Trx: {result['ValueTrx_Rp']}")
                 print(f"  Method: {result.get('ValueTrx_Method', 'N/A')}")
         else:
-            print(f"  Failed to process {kode}")
+            print(f"  Failed to process {kode} (volume mungkin < {MIN_VOLUME:,.0f})")
     
     print("\n" + "=" * 50)
     print("Engine test completed")
