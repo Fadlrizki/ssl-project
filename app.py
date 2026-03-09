@@ -15,7 +15,7 @@ from datetime import datetime, timedelta
 # Import modules
 from engine import build_probability_table_from_ticker, backtest
 from engine_v2 import process_stock, fetch_data, add_indicators
-from utils import  cache_manager,  format_utils
+from utils import cache_manager, format_utils
 
 
 # ======================================================
@@ -122,12 +122,10 @@ def run_backtest_cached(kode):
     
     # Check if cached result exists and is from today
     if key in cache:
-        st.info(f"Using cached backtest result for {kode}")
         return cache[key]
     
     # Run new backtest
-    with st.spinner(f"Running backtest for {kode}..."):
-        result = backtest(f"{kode}.JK", mode="decision")
+    result = backtest(f"{kode}.JK", mode="decision")
     
     # Save to cache
     cache[key] = result
@@ -875,11 +873,10 @@ if event.selection.rows:
     
     # Create tabs
     tab1, tab2, tab3 = st.tabs([
-                                        "📈 Chart & Metrics", 
-                                        "💰 Value Trx", 
-                                        "🤖 Probability",
-                                       
-                                    ])
+        "📈 Chart & Metrics", 
+        "💰 Value Trx", 
+        "🤖 Probability",
+    ])
     
     with tab1:
         # Refresh button
@@ -1138,13 +1135,13 @@ if event.selection.rows:
                 )
             else:
                 st.info("No probability table available for this stock")
-                
+
 
 # ======================================================
-# TRIGGER SCREENING SECTION
+# TRIGGER SCREENING SECTION - ALL STRONG STOCKS
 # ======================================================
 st.divider()
-st.header("🔔 Trigger Screening")
+st.header("🔔 Trigger Screening - All STRONG Stocks")
 
 trigger_col1, trigger_col2 = st.columns([1, 3])
 with trigger_col1:
@@ -1155,6 +1152,7 @@ with trigger_col1:
             st.warning("Belum ada hasil screening")
             st.stop()
         
+        # Ambil semua saham dengan MajorTrend STRONG (bukan hanya yang HIJAU)
         df_strong = df_screen[df_screen["MajorTrend"] == "STRONG"]
         
         if df_strong.empty:
@@ -1163,7 +1161,7 @@ with trigger_col1:
         
         progress = st.progress(0.0)
         status = st.empty()
-        hijau_results = []
+        strong_results = []
         total = len(df_strong)
         
         for i, row in enumerate(df_strong.itertuples(), start=1):
@@ -1171,13 +1169,15 @@ with trigger_col1:
             try:
                 result = run_backtest_cached(kode)
                 
-                if result and result.get("Bias") == "HIJAU":
-                    hijau_results.append({
+                if result:
+                    # Ambil semua hasil, bukan hanya yang HIJAU
+                    strong_results.append({
                         "Kode": kode,
                         "MajorTrend": row.MajorTrend,
                         "MinorPhase": row.MinorPhase,
                         "RSI": row.RSI,
                         "VOL_BEHAVIOR": row.VOL_BEHAVIOR,
+                        "Bias": result.get("Bias", "UNKNOWN"),
                         "ProbHijau": result.get("ProbHijau"),
                         "ProbMerah": result.get("ProbMerah"),
                         "Sample": result.get("Sample"),
@@ -1191,13 +1191,21 @@ with trigger_col1:
             progress.progress(i / total)
             status.text(f"Processed {i}/{total} STRONG stocks")
         
-        df_trigger = pd.DataFrame(hijau_results)
+        df_trigger = pd.DataFrame(strong_results)
         
         if not df_trigger.empty:
             save_trigger_cache(df_trigger, TODAY)
-            st.success(f"✅ Trigger screening completed: {len(df_trigger)} stocks with HIJAU bias")
+            st.success(f"✅ Trigger screening completed: {len(df_trigger)} STRONG stocks analyzed")
+            
+            # Tampilkan statistik bias (dengan pengecekan kolom)
+            if 'Bias' in df_trigger.columns:
+                bias_counts = df_trigger['Bias'].value_counts()
+                stats_text = " | ".join([f"{bias}: {count}" for bias, count in bias_counts.items()])
+                st.info(f"📊 Bias distribution: {stats_text}")
+            else:
+                st.info("📊 Bias data not available")
         else:
-            st.info("No stocks with HIJAU bias found")
+            st.warning("No results from backtest analysis")
         
         st.rerun()
 
@@ -1206,13 +1214,32 @@ TRADE_DATE = TODAY
 df_trigger, trigger_used_date = load_trigger_cache_pickle(TRADE_DATE)
 
 if df_trigger is not None and not df_trigger.empty:
-    st.subheader(f"🌱 Stocks with STRONG Trend & HIJAU Bias ({len(df_trigger)})")
+    # Cek apakah kolom 'Bias' ada (untuk kompatibilitas dengan cache lama)
+    if 'Bias' not in df_trigger.columns:
+        # Jika tidak ada, berarti ini adalah cache lama yang hanya berisi HIJAU
+        # Kita tambahkan kolom Bias dengan nilai default 'HIJAU'
+        df_trigger['Bias'] = 'HIJAU'
+        st.info("ℹ️ Menggunakan format cache lama. Semua data dianggap sebagai HIJAU.")
     
-    if show_status("Trigger screening", TRADE_DATE, trigger_used_date, df_trigger):
+    # Filter options untuk trigger results
+    st.subheader(f"🌱 STRONG Stocks Analysis ({len(df_trigger)} saham)")
+    
+    # Filter berdasarkan Bias
+    bias_options = ["ALL"] + sorted(df_trigger['Bias'].unique().tolist())
+    selected_bias = st.selectbox("Filter by Bias:", bias_options, index=0)
+    
+    # Apply filter
+    df_filtered = df_trigger.copy()
+    if selected_bias != "ALL":
+        df_filtered = df_filtered[df_filtered['Bias'] == selected_bias]
+    
+    st.caption(f"Showing {len(df_filtered)} stocks")
+    
+    if show_status("Trigger screening", TRADE_DATE, trigger_used_date, df_filtered):
         # Format for display
-        display_trigger = df_trigger.copy()
+        display_trigger = df_filtered.copy()
         
-        # Merge dengan data screening untuk mendapatkan Volume dan Price
+        # Merge dengan data screening untuk mendapatkan Volume, Price, dan informasi lainnya
         if "scan" in st.session_state:
             scan_df = st.session_state["scan"]
             if not scan_df.empty and "Kode" in scan_df.columns:
@@ -1232,6 +1259,8 @@ if df_trigger is not None and not df_trigger.empty:
                     scan_cols.append("RSI")
                 if "VOL_BEHAVIOR" in scan_df.columns and "VOL_BEHAVIOR" not in display_trigger.columns:
                     scan_cols.append("VOL_BEHAVIOR")
+                if "Latest_Candle" in scan_df.columns and "Latest_Candle" not in display_trigger.columns:
+                    scan_cols.append("Latest_Candle")
                 
                 # Hanya merge jika ada kolom tambahan
                 if len(scan_cols) > 1:
@@ -1287,10 +1316,11 @@ if df_trigger is not None and not df_trigger.empty:
         if cols_to_drop:
             display_trigger = display_trigger.drop(columns=cols_to_drop)
         
-        # Reorder columns for better display - TAMBAHKAN PRICE DAN VOLUME
+        # Reorder columns for better display
         preferred_order = ["Kode", "Price_Display", "PriceChange%_Display", "Volume_Display", 
-                          "MajorTrend", "MinorPhase", "RSI_Display", "VOL_BEHAVIOR", 
-                          "ProbHijau_Display", "ProbMerah_Display", "Sample", "Confidence", "MatchType"]
+                          "MajorTrend", "MinorPhase", "Bias", "RSI_Display", "VOL_BEHAVIOR", 
+                          "Latest_Candle", "ProbHijau_Display", "ProbMerah_Display", 
+                          "Sample", "Confidence", "MatchType"]
         
         # Tambahkan Sector dan Industry jika ada
         if "Sector" in display_trigger.columns:
@@ -1313,6 +1343,7 @@ if df_trigger is not None and not df_trigger.empty:
             "Volume_Display": "Volume",
             "RSI_Display": "RSI",
             "VOL_BEHAVIOR": "Vol Behavior",
+            "Latest_Candle": "Candle",
             "ProbHijau_Display": "Prob HIJAU",
             "ProbMerah_Display": "Prob MERAH"
         }
@@ -1321,7 +1352,70 @@ if df_trigger is not None and not df_trigger.empty:
         rename_dict = {k: v for k, v in column_rename.items() if k in display_trigger.columns}
         display_trigger = display_trigger.rename(columns=rename_dict)
         
-        st.dataframe(display_trigger, use_container_width=True)
+        # Color function for Bias column (hanya jika kolom Bias ada)
+        def color_bias(val):
+            if pd.isna(val):
+                return ""
+            if val == "HIJAU":
+                return "background-color: #d4edda; color: #155724; font-weight: bold;"
+            elif val == "MERAH":
+                return "background-color: #f8d7da; color: #721c24; font-weight: bold;"
+            elif val == "NO_MATCH":
+                return "background-color: #fff3cd; color: #856404;"
+            return ""
+        
+        # Apply styling jika kolom Bias ada
+        if 'Bias' in display_trigger.columns:
+            styled_trigger = display_trigger.style.applymap(color_bias, subset=['Bias'])
+            st.dataframe(styled_trigger, use_container_width=True)
+        else:
+            st.dataframe(display_trigger, use_container_width=True)
+        
+        # Summary statistics (dengan pengecekan kolom)
+        with st.expander("📊 Summary Statistics"):
+            col1, col2, col3, col4 = st.columns(4)
+            
+            with col1:
+                if 'Bias' in df_trigger.columns:
+                    bias_counts = df_trigger['Bias'].value_counts()
+                    st.write("**Bias Distribution:**")
+                    for bias, count in bias_counts.items():
+                        st.write(f"- {bias}: {count} ({count/len(df_trigger)*100:.1f}%)")
+                else:
+                    st.write("**Bias Distribution:**")
+                    st.write("- HIJAU: all stocks (from old cache)")
+            
+            with col2:
+                if 'Confidence' in df_trigger.columns:
+                    conf_counts = df_trigger['Confidence'].value_counts()
+                    st.write("**Confidence Levels:**")
+                    for conf, count in conf_counts.items():
+                        st.write(f"- {conf}: {count}")
+                else:
+                    st.write("**Confidence Levels:**")
+                    st.write("- Data not available")
+            
+            with col3:
+                if 'MinorPhase' in df_trigger.columns:
+                    phase_counts = df_trigger['MinorPhase'].value_counts().head(5)
+                    st.write("**Top Minor Phases:**")
+                    for phase, count in phase_counts.items():
+                        st.write(f"- {phase}: {count}")
+                else:
+                    st.write("**Top Minor Phases:**")
+                    st.write("- Data not available")
+            
+            with col4:
+                if 'ProbHijau' in df_trigger.columns:
+                    avg_prob = df_trigger['ProbHijau'].mean()
+                    st.metric("Avg Prob HIJAU", f"{avg_prob:.1f}%")
+                    
+                    if 'ProbMerah' in df_trigger.columns:
+                        avg_prob_merah = df_trigger['ProbMerah'].mean()
+                        st.metric("Avg Prob MERAH", f"{avg_prob_merah:.1f}%")
+                else:
+                    st.metric("Avg Prob HIJAU", "N/A")
+                    st.metric("Avg Prob MERAH", "N/A")
 
 # ======================================================
 # BROKER SUMMARY ENRICHMENT
@@ -1383,7 +1477,7 @@ if df_broker is not None and not df_broker.empty:
                 main_col, detail_col = st.columns([2, 1])
                 
                 with main_col:
-                    # Tampilkan tabel utama - TAMBAHKAN PRICE, VOLUME, DAN AVG PRICE COLUMNS
+                    # Tampilkan tabel utama
                     main_cols = ['Kode']
                     
                     # Tambahkan Price dan Volume di awal
@@ -1401,7 +1495,7 @@ if df_broker is not None and not df_broker.empty:
                         main_cols.append('Industry')
                     
                     # Tambahkan kolom lainnya
-                    main_cols.extend(['MajorTrend', 'MinorPhase', 'RSI', 'VOL_BEHAVIOR',
+                    main_cols.extend(['MajorTrend', 'MinorPhase', 'Bias', 'RSI', 'VOL_BEHAVIOR',
                                      'ProbHijau', 'ProbMerah', 'Confidence', 
                                      'net_volume', 'avg_buy_price_buyers', 
                                      'avg_sell_price_sellers'])
@@ -1442,11 +1536,13 @@ if df_broker is not None and not df_broker.empty:
                         if 'Industry' in display_df.columns:
                             display_data['Industry'] = display_df['Industry']
                         
-                        # Tambahkan MajorTrend dan MinorPhase
+                        # Tambahkan MajorTrend, MinorPhase, dan Bias
                         if 'MajorTrend' in display_df.columns:
                             display_data['MajorTrend'] = display_df['MajorTrend']
                         if 'MinorPhase' in display_df.columns:
                             display_data['MinorPhase'] = display_df['MinorPhase']
+                        if 'Bias' in display_df.columns:
+                            display_data['Bias'] = display_df['Bias']
                         if 'RSI' in display_df.columns:
                             display_data['RSI'] = display_df['RSI'].apply(
                                 lambda x: f"{x:.1f}" if pd.notna(x) else "N/A"
@@ -1510,6 +1606,13 @@ if df_broker is not None and not df_broker.empty:
                                     pass
                             return ''
                         
+                        def color_bias(val):
+                            if val == "HIJAU":
+                                return 'background-color: #d4edda; color: #155724; font-weight: bold;'
+                            elif val == "MERAH":
+                                return 'background-color: #f8d7da; color: #721c24; font-weight: bold;'
+                            return ''
+                        
                         def color_avg_buy(val):
                             if isinstance(val, str) and val != 'N/A' and 'Rp' in val:
                                 try:
@@ -1557,6 +1660,10 @@ if df_broker is not None and not df_broker.empty:
                         # Apply color to Price Change if column exists
                         if 'Chg %' in styled_df.columns:
                             styled_df = styled_df.applymap(color_price_change, subset=['Chg %'])
+                        
+                        # Apply color to Bias if column exists
+                        if 'Bias' in styled_df.columns:
+                            styled_df = styled_df.applymap(color_bias, subset=['Bias'])
                         
                         # Apply color to Avg Buy if column exists
                         if 'Avg Buy' in styled_df.columns:
@@ -1617,7 +1724,7 @@ if df_broker is not None and not df_broker.empty:
                                     st.metric("Avg Buy Price", f"Rp {avg_buy_price:,.0f}" if not pd.isna(avg_buy_price) else "N/A")
                 
                 with detail_col:
-                    # Kode detail view tetap sama
+                    # Kode detail view
                     selected_kode = None
                     
                     # Coba ambil dari table selection
@@ -1667,32 +1774,26 @@ if df_broker is not None and not df_broker.empty:
                                     vol_display = f"{volume:,.0f}"
                                 st.metric("Volume", vol_display)
                         
-                        # Metrics card dengan avg prices
+                        # Metrics card dengan bias dan probabilities
                         with st.container(border=True):
                             col1, col2, col3 = st.columns([1, 1, 1])
                             
                             with col1:
+                                if 'Bias' in selected_data:
+                                    bias = selected_data['Bias']
+                                    bias_color = "🟢" if bias == "HIJAU" else ("🔴" if bias == "MERAH" else "⚪")
+                                    st.metric("Bias", f"{bias_color} {bias}")
+                            
+                            with col2:
                                 if 'ProbHijau' in selected_data and pd.notna(selected_data['ProbHijau']):
                                     prob = float(selected_data['ProbHijau'])
                                     st.metric("Prob. Hijau", f"{prob:.1f}%")
                             
-                            with col2:
+                            with col3:
                                 if 'net_volume' in selected_data and pd.notna(selected_data['net_volume']):
                                     net_vol = float(selected_data['net_volume'])
                                     color = "🟢" if net_vol > 0 else "🔴"
                                     st.metric("Net Volume", f"{color} {abs(net_vol):,.0f}")
-                            
-                            with col3:
-                                if 'Confidence' in selected_data:
-                                    confidence = selected_data['Confidence']
-                                    conf_color = {
-                                        'VERY_HIGH': '🟢',
-                                        'HIGH': '🟡',
-                                        'MEDIUM': '🟠',
-                                        'LOW': '🔴',
-                                        'VERY_LOW': '⚫'
-                                    }.get(confidence, '⚪')
-                                    st.metric("Confidence", f"{conf_color} {confidence}")
                         
                         # Price metrics card
                         with st.container(border=True):
@@ -1842,6 +1943,7 @@ if df_broker is not None and not df_broker.empty:
                 st.warning("Tidak ada overlap antara saham trigger dan broker summary.")
         else:
             st.info("Menunggu hasil trigger screening...")
+
 # ======================================================
 # FOOTER
 # ======================================================
