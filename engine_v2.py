@@ -1,54 +1,305 @@
 """
 ENGINE V2 - Core Screening Engine
-Untuk analisis real-time dan screening saham IDX
+Analisis real-time dan screening saham IDX dengan Wyckoff Phase Detection
 """
 
-import pandas as pd
-import numpy as np
+import os
+import time
 import warnings
-warnings.filterwarnings('ignore')
+from datetime import datetime, timedelta
+from typing import Dict, List, Optional, Tuple, Union, Any
 
-# Import dari utils module
+import numpy as np
+import pandas as pd
+import yfinance as yf
+
 from utils import data_utils, cache_manager, date_utils, validation_utils
 
+warnings.filterwarnings('ignore')
+
 # ======================================================
-# CONFIGURATION
+# CONFIGURATION CONSTANTS
 # ======================================================
+
+# EMA Periods
 EMA_FAST = 13
 EMA_MID = 21
 EMA_SLOW = 50
 SMA50_PERIOD = 50
+
+# Volume
 VOL_MA_PERIOD = 20
+
+# Oscillators
 RSI_PERIOD = 14
 STOCH_PERIOD = 14
+
+# Trend Analysis
 SLOPE_WINDOW = 10
 EMA_COMPRESS_TH = 0.003
 
+# Candle Analysis
 BODY_THRESHOLD = 0.02
 CANDLE_DIST_TH = 5
 TOLERANCE = 0.02
 
+# Confidence Scoring
 BASE_CONF = 6
 EXTRA_CONF = 2
 MAX_CONF = BASE_CONF + EXTRA_CONF
 
-# ======================================================
-# VALUE TRX FUNCTIONS (NEW ADDITION)
-# ======================================================
-import yfinance as yf
-from datetime import datetime, timedelta
+# Wyckoff Constants
+WYCKOFF_LOOKBACK = 50
+SPRING_THRESHOLD = 0.98  # 2% below support
+UPTHRUST_THRESHOLD = 1.02  # 2% above resistance
+VOLUME_SPIKE_THRESHOLD = 1.5
 
-def calculate_value_trx_from_1m(ticker: str, date: str = None, use_cache: bool = True) -> dict:
+# ======================================================
+# CACHE MANAGEMENT
+# ======================================================
+
+CACHE_DIR = "data_cache"
+
+def get_cache_key(ticker: str, interval: str, period: str) -> str:
+    """Generate cache key for data caching"""
+    safe_ticker = ticker.replace(".", "_").replace(":", "_")
+    return f"{safe_ticker}_{interval}_{period}"
+
+def load_cached_data(ticker: str, interval: str, period: str) -> Optional[pd.DataFrame]:
+    """Load data from cache using cache_manager"""
+    cache_key = get_cache_key(ticker, interval, period)
+    cached_data = cache_manager.load(cache_key, suffix="pkl")
+    return cached_data.copy() if cached_data is not None else None
+
+def save_to_cache(ticker: str, interval: str, period: str, df: pd.DataFrame) -> None:
+    """Save data to cache using cache_manager"""
+    cache_key = get_cache_key(ticker, interval, period)
+    cache_manager.save(cache_key, df, suffix="pkl")
+
+def is_cache_fresh(
+    ticker: str, 
+    interval: str, 
+    period: str, 
+    df: Optional[pd.DataFrame] = None
+) -> bool:
     """
-    Hitung value trx dari data 1 menit untuk satu hari tertentu
+    Check if cached data is fresh
+    Fresh if: last data date >= last trading day
+    """
+    if df is None:
+        cached = load_cached_data(ticker, interval, period)
+        if cached is None or cached.empty:
+            return False
+        df = cached
+    
+    if df.empty:
+        return False
+    
+    # Get last date from data
+    last_date = df.index[-1]
+    last_date = last_date.date() if hasattr(last_date, 'date') else last_date
+    
+    # Get last trading day
+    last_trading_day = date_utils.get_last_trading_day().date()
+    
+    return last_date >= last_trading_day
+
+# ======================================================
+# DATA FETCHING FUNCTIONS
+# ======================================================
+
+def normalize_yf_df(df: pd.DataFrame, ticker: Optional[str] = None) -> pd.DataFrame:
+    """
+    Normalize yfinance dataframe safely
     
     Args:
-        ticker: Kode saham (BBCA.JK)
-        date: Tanggal (YYYY-MM-DD), default hari ini
-        use_cache: Gunakan cache untuk mempercepat
+        df: Raw yfinance dataframe
+        ticker: Stock ticker for MultiIndex handling
     
     Returns:
-        dict: Berisi metrics value trx lengkap
+        Normalized dataframe
+    """
+    if df is None or df.empty:
+        return df
+    
+    # Handle MultiIndex columns
+    if isinstance(df.columns, pd.MultiIndex):
+        if ticker is None:
+            available_tickers = df.columns.get_level_values(1).unique()
+            if len(available_tickers) > 0:
+                ticker = available_tickers[0]
+            else:
+                raise ValueError("No tickers found in MultiIndex columns")
+        
+        if ticker in df.columns.get_level_values(1):
+            df = df.xs(ticker, axis=1, level=1)
+        else:
+            raise ValueError(f"Ticker {ticker} not found in dataframe")
+    
+    # Remove duplicate columns
+    df = df.loc[:, ~df.columns.duplicated()]
+    
+    # Standardize column names
+    column_map = {'Adj Close': 'Close'}
+    df.rename(columns=column_map, inplace=True)
+    
+    return df
+
+def fetch_data(
+    ticker: str, 
+    interval: str = "1d", 
+    period: str = "12mo", 
+    force_refresh: bool = False
+) -> Optional[pd.DataFrame]:
+    """
+    Fetch data with caching mechanism
+    
+    Args:
+        ticker: Stock ticker (e.g., "BBCA.JK")
+        interval: Data interval ("1d", "1h", etc.)
+        period: Data period ("12mo", "6mo", etc.)
+        force_refresh: Force fresh download ignoring cache
+    
+    Returns:
+        DataFrame with OHLCV data or None if failed
+    """
+    # Check cache first if not forcing refresh
+    if not force_refresh:
+        cached_df = load_cached_data(ticker, interval, period)
+        if cached_df is not None and is_cache_fresh(ticker, interval, period, cached_df):
+            print(f"  Using cached data for {ticker}")
+            return cached_df.copy()
+    
+    # Fetch fresh data
+    print(f"  Fetching fresh data for {ticker} ({interval}, {period})")
+    df = data_utils.safe_yf_download(ticker, interval, period)
+    
+    if df is None or df.empty:
+        print(f"  Failed to fetch data for {ticker}")
+        return None
+    
+    # Normalize dataframe
+    df = normalize_yf_df(df, ticker)
+    
+    # Validate required columns
+    required_cols = ['Open', 'High', 'Low', 'Close', 'Volume']
+    missing_cols = [col for col in required_cols if col not in df.columns]
+    
+    if missing_cols:
+        print(f"  Missing required columns for {ticker}: {missing_cols}")
+        return None
+    
+    # Basic data cleaning
+    df = df[required_cols].copy()
+    df.dropna(inplace=True)
+    
+    # Check if stock is suspended (no volume for last 10 bars)
+    if len(df) >= 10 and df['Volume'].iloc[-10:].sum() == 0:
+        print(f"  Stock {ticker} appears suspended (no volume)")
+        return None
+    
+    # Save to cache
+    save_to_cache(ticker, interval, period, df)
+    
+    return df
+
+def fetch_intraday_safe(
+    ticker: str,
+    interval: str = "1h",
+    period: str = "6mo",
+    min_candles: int = 120,
+    allow_4h_fallback: bool = True
+) -> Optional[pd.DataFrame]:
+    """
+    Fetch intraday data safely with fallback options
+    
+    Args:
+        ticker: Stock ticker
+        interval: Data interval
+        period: Data period
+        min_candles: Minimum required candles
+        allow_4h_fallback: Allow fallback to 4H data
+    
+    Returns:
+        DataFrame with intraday data or None
+    """
+    cache_key = f"{get_cache_key(ticker, interval, period)}_intraday"
+    
+    # Check cache first
+    cached_data = cache_manager.load(cache_key, suffix="pkl")
+    if cached_data is not None and not cached_data.empty:
+        try:
+            last_date = cached_data.index[-1]
+            today = pd.Timestamp.today().date()
+            
+            # Use cache if from today
+            if hasattr(last_date, 'date'):
+                if last_date.date() == today:
+                    return cached_data.copy()
+            elif isinstance(last_date, str):
+                cache_date = pd.to_datetime(last_date).date()
+                if cache_date == today:
+                    return cached_data.copy()
+        except Exception:
+            pass  # If error, fetch fresh data
+    
+    try:
+        # Use safe download from utils
+        df = data_utils.safe_yf_download(
+            ticker=ticker,
+            interval=interval,
+            period=period,
+            max_retries=2
+        )
+        
+        if df is None or df.empty:
+            print(f"  [INTRADAY EMPTY] {ticker}")
+            
+            # Try fallback to 4H if allowed
+            if interval == "1h" and allow_4h_fallback:
+                print(f"  Trying 4H fallback for {ticker}")
+                return fetch_intraday_safe(
+                    ticker, "4h", "3mo", min_candles // 4, False
+                )
+            return None
+        
+        # Validate data
+        if len(df) < min_candles:
+            print(f"  [INTRADAY TOO SHORT] {ticker} | {len(df)} bars")
+            return None
+        
+        if df["Volume"].iloc[-10:].sum() == 0:
+            print(f"  [INTRADAY SUSPENDED] {ticker}")
+            return None
+        
+        # Save to cache
+        cache_manager.save(cache_key, df, suffix="pkl")
+        
+        return df
+        
+    except Exception as e:
+        print(f"  [INTRADAY FAIL] {ticker} | {e}")
+        return None
+
+# ======================================================
+# VALUE TRX FUNCTIONS
+# ======================================================
+
+def calculate_value_trx_from_1m(
+    ticker: str, 
+    date: Optional[str] = None, 
+    use_cache: bool = True
+) -> Dict[str, Any]:
+    """
+    Calculate value transaction from 1-minute data
+    
+    Args:
+        ticker: Stock ticker (BBCA.JK)
+        date: Date (YYYY-MM-DD), defaults to today
+        use_cache: Use cache for faster access
+    
+    Returns:
+        Dictionary with value transaction metrics
     """
     if date is None:
         date = datetime.now().strftime("%Y-%m-%d")
@@ -60,14 +311,13 @@ def calculate_value_trx_from_1m(ticker: str, date: str = None, use_cache: bool =
     if use_cache:
         cached = cache_manager.load(cache_key, suffix="pkl")
         if cached is not None:
-            print(f"  Using cached value trx for {ticker} on {date}")
+            print(f"    Using cached value trx for {ticker} on {date}")
             return cached
     
     try:
-        print(f"  Fetching 1m data for value trx calculation: {ticker} ({date})")
+        print(f"    Fetching 1m data for value trx: {ticker} ({date})")
         
-        # **PERBAIKAN: Gunakan format datetime yang benar untuk yfinance**
-        # yfinance format: "YYYY-MM-DD"
+        # Format dates for yfinance
         start_date = pd.Timestamp(date).strftime("%Y-%m-%d")
         end_date = (pd.Timestamp(date) + pd.Timedelta(days=1)).strftime("%Y-%m-%d")
         
@@ -82,7 +332,7 @@ def calculate_value_trx_from_1m(ticker: str, date: str = None, use_cache: bool =
         )
         
         if df_1m.empty:
-            print(f"    No 1m data available for {ticker} on {date}")
+            print(f"      No 1m data available for {ticker} on {date}")
             return {
                 'total_value': 0,
                 'avg_price': 0,
@@ -93,9 +343,9 @@ def calculate_value_trx_from_1m(ticker: str, date: str = None, use_cache: bool =
                 'status': 'NO_DATA'
             }
         
-        # **PERBAIKAN: Handle empty data after market hours**
-        if len(df_1m) < 10:  # Minimal 10 bar untuk valid data
-            print(f"    Insufficient 1m bars for {ticker}: {len(df_1m)} bars")
+        # Handle insufficient bars
+        if len(df_1m) < 10:
+            print(f"      Insufficient 1m bars for {ticker}: {len(df_1m)} bars")
             return {
                 'total_value': 0,
                 'avg_price': 0,
@@ -106,7 +356,7 @@ def calculate_value_trx_from_1m(ticker: str, date: str = None, use_cache: bool =
                 'status': 'INSUFFICIENT_BARS'
             }
         
-        # Normalize jika menggunakan MultiIndex
+        # Normalize MultiIndex if needed
         if isinstance(df_1m.columns, pd.MultiIndex):
             if ticker in df_1m.columns.get_level_values(1):
                 df_1m = df_1m.xs(ticker, axis=1, level=1)
@@ -125,16 +375,16 @@ def calculate_value_trx_from_1m(ticker: str, date: str = None, use_cache: bool =
                         'status': 'NO_TICKER_DATA'
                     }
         
-        # Rename columns if needed
+        # Standardize column names
         column_map = {'Adj Close': 'Close'}
         df_1m.rename(columns=column_map, inplace=True)
         
-        # Validasi kolom required
+        # Validate required columns
         required_cols = ['Open', 'High', 'Low', 'Close', 'Volume']
         missing_cols = [col for col in required_cols if col not in df_1m.columns]
         
         if missing_cols:
-            print(f"    Missing columns for {ticker}: {missing_cols}")
+            print(f"      Missing columns for {ticker}: {missing_cols}")
             return {
                 'total_value': 0,
                 'avg_price': 0,
@@ -142,10 +392,10 @@ def calculate_value_trx_from_1m(ticker: str, date: str = None, use_cache: bool =
                 'bars_count': 0,
                 'vwap': 0,
                 'date': date,
-                'status': f'MISSING_COLS_{missing_cols}'
+                'status': f'MISSING_COLS'
             }
         
-        # Bersihkan data
+        # Clean data
         df_1m = df_1m[required_cols].copy()
         df_1m.dropna(inplace=True)
         
@@ -160,18 +410,18 @@ def calculate_value_trx_from_1m(ticker: str, date: str = None, use_cache: bool =
                 'status': 'NO_VALID_DATA'
             }
         
-        # Hitung metrics
+        # Calculate metrics
         volume_total = df_1m['Volume'].sum()
         
-        # Gunakan typical price untuk perhitungan lebih akurat
+        # Use typical price for more accurate calculation
         df_1m['TypicalPrice'] = (df_1m['High'] + df_1m['Low'] + df_1m['Close']) / 3
         vwap = (df_1m['TypicalPrice'] * df_1m['Volume']).sum() / volume_total if volume_total > 0 else 0
         
-        # Value per bar dan total value
+        # Value per bar and total value
         df_1m['ValuePerBar'] = df_1m['TypicalPrice'] * df_1m['Volume']
         total_value = df_1m['ValuePerBar'].sum()
         
-        # Average price (simplified)
+        # Average price
         avg_price = df_1m['TypicalPrice'].mean()
         
         # Additional metrics
@@ -179,7 +429,7 @@ def calculate_value_trx_from_1m(ticker: str, date: str = None, use_cache: bool =
         last_price = df_1m['Close'].iloc[-1] if len(df_1m) > 0 else 0
         price_change = ((last_price / first_price) - 1) * 100 if first_price > 0 else 0
         
-        # Volume distribution metrics
+        # Volume distribution
         if len(df_1m) > 0:
             high_volume_bars = len(df_1m[df_1m['Volume'] > df_1m['Volume'].median()])
         else:
@@ -212,7 +462,7 @@ def calculate_value_trx_from_1m(ticker: str, date: str = None, use_cache: bool =
         return result
         
     except Exception as e:
-        print(f"  Error calculating value trx from 1m for {ticker}: {e}")
+        print(f"    Error calculating value trx from 1m for {ticker}: {e}")
         return {
             'total_value': 0,
             'avg_price': 0,
@@ -223,25 +473,36 @@ def calculate_value_trx_from_1m(ticker: str, date: str = None, use_cache: bool =
             'status': f'ERROR: {str(e)[:50]}'
         }
 
-def calculate_daily_value_trx(df_daily: pd.DataFrame) -> dict:
+def calculate_daily_value_trx(df_daily: pd.DataFrame) -> Dict[str, Any]:
     """
-    Hitung value trx dan metrics terkait dari data daily
-    (Fallback jika data 1m tidak tersedia)
+    Calculate value transaction from daily data (fallback method)
+    
+    Args:
+        df_daily: Daily OHLCV dataframe
+    
+    Returns:
+        Dictionary with value transaction metrics
     """
     if df_daily.empty or len(df_daily) < 1:
         return {}
     
     try:
-        # Ambil data hari terakhir
+        # Get last day data
         last_day = df_daily.iloc[-1]
         
-        # Hitung typical price
+        # Calculate typical price
         typical_price = (
             last_day['High'] + last_day['Low'] + last_day['Close']
         ) / 3
         
-        # Hitung value trx
+        # Calculate value transaction
         value_trx = last_day['Volume'] * typical_price
+        
+        # Format date
+        if hasattr(last_day.name, 'strftime'):
+            date_str = last_day.name.strftime("%Y-%m-%d")
+        else:
+            date_str = str(last_day.name)
         
         return {
             'total_value': value_trx,
@@ -256,27 +517,26 @@ def calculate_daily_value_trx(df_daily: pd.DataFrame) -> dict:
             'first_price': last_day['Open'],
             'last_price': last_day['Close'],
             'price_change_pct': round(((last_day['Close'] / last_day['Open']) - 1) * 100, 2),
-            'date': last_day.name.strftime("%Y-%m-%d") if hasattr(last_day.name, 'strftime') else str(last_day.name),
+            'date': date_str,
             'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             'method': 'DAILY_APPROXIMATION',
             'status': 'SUCCESS_DAILY'
         }
         
     except Exception as e:
-        print(f"Error in calculate_daily_value_trx: {e}")
+        print(f"  Error in calculate_daily_value_trx: {e}")
         return {}
-    
-# Tambahkan sector info
-def get_sector_info(ticker: str, use_cache: bool = True) -> dict:
+
+def get_sector_info(ticker: str, use_cache: bool = True) -> Dict[str, Any]:
     """
     Get sector information for a ticker with caching
     
     Args:
-        ticker: Kode saham (BBCA.JK)
-        use_cache: Gunakan cache untuk mempercepat
+        ticker: Stock ticker (BBCA.JK)
+        use_cache: Use cache for faster access
     
     Returns:
-        dict: Sector information
+        Dictionary with sector information
     """
     # Generate cache key
     cache_key = f"sector_{ticker.replace('.', '_')}"
@@ -291,7 +551,7 @@ def get_sector_info(ticker: str, use_cache: bool = True) -> dict:
         # Create yfinance ticker object
         yf_ticker = yf.Ticker(ticker)
         
-        # Get info dengan retry mechanism
+        # Get info with retry mechanism
         max_retries = 2
         for attempt in range(max_retries):
             try:
@@ -329,46 +589,60 @@ def get_sector_info(ticker: str, use_cache: bool = True) -> dict:
             'company_name': ticker,
             'country': 'ID'
         }
-    
-def get_value_trx_metrics(ticker: str, df_daily: pd.DataFrame = None, 
-                         use_1m_preferred: bool = True, date: str = None) -> dict:
+
+def get_value_trx_metrics(
+    ticker: str, 
+    df_daily: Optional[pd.DataFrame] = None, 
+    use_1m_preferred: bool = True, 
+    date: Optional[str] = None
+) -> Dict[str, Any]:
     """
-    Get value trx metrics dengan fallback strategy
+    Get value transaction metrics with fallback strategy
+    
+    Args:
+        ticker: Stock ticker
+        df_daily: Daily dataframe (for fallback)
+        use_1m_preferred: Prefer 1-minute data
+        date: Specific date to analyze
+    
+    Returns:
+        Dictionary with value transaction metrics
     """
     if date is None and df_daily is not None and not df_daily.empty:
         last_date = df_daily.index[-1]
-        date = last_date.strftime("%Y-%m-%d") if hasattr(last_date, 'strftime') else str(last_date)
+        if hasattr(last_date, 'strftime'):
+            date = last_date.strftime("%Y-%m-%d")
+        else:
+            date = str(last_date)
     
     if date is None:
         date = datetime.now().strftime("%Y-%m-%d")
     
-    # **PERBAIKAN: Cek jika hari ini weekend atau hari libur**
-    # Jika hari Sabtu/Minggu, gunakan hari Jumat
+    # Adjust for weekends
     check_date = pd.Timestamp(date)
-    if check_date.weekday() >= 5:  # 5 = Sabtu, 6 = Minggu
-        # Mundur ke hari Jumat terakhir
-        days_back = check_date.weekday() - 4  # 4 = Jumat
+    if check_date.weekday() >= 5:  # 5 = Saturday, 6 = Sunday
+        days_back = check_date.weekday() - 4  # 4 = Friday
         check_date = check_date - pd.Timedelta(days=days_back)
         date = check_date.strftime("%Y-%m-%d")
-        print(f"  Adjusted to last trading day: {date}")
+        print(f"    Adjusted to last trading day: {date}")
     
     # Try 1m data first if preferred
     if use_1m_preferred:
         result_1m = calculate_value_trx_from_1m(ticker, date, use_cache=True)
         
-        # **PERBAIKAN: Kurangi threshold untuk valid data**
         if (result_1m.get('status') in ['SUCCESS', 'INSUFFICIENT_BARS'] and 
             result_1m.get('total_value', 0) > 0 and
-            result_1m.get('bars_count', 0) >= 5):  # Minimal 5 bar
+            result_1m.get('bars_count', 0) >= 5):
             result_1m['method'] = '1M_ACCURATE'
             return result_1m
         
-        print(f"  1m data insufficient for {ticker}, falling back to daily approximation")
+        print(f"    1m data insufficient for {ticker}, falling back to daily approximation")
     
     # Fallback to daily approximation
     if df_daily is not None and not df_daily.empty:
         result_daily = calculate_daily_value_trx(df_daily)
         if result_daily:
+            result_daily['method'] = 'DAILY_APPROXIMATION'
             return result_daily
     
     # Final fallback
@@ -388,215 +662,18 @@ def get_value_trx_metrics(ticker: str, df_daily: pd.DataFrame = None,
     }
 
 # ======================================================
-# CACHE MANAGEMENT (using utils)
-# ======================================================
-CACHE_DIR = "data_cache"
-
-def get_cache_key(ticker: str, interval: str, period: str) -> str:
-    """Generate cache key"""
-    safe_ticker = ticker.replace(".", "_").replace(":", "_")
-    return f"{safe_ticker}_{interval}_{period}"
-
-def load_cached_data(ticker: str, interval: str, period: str):
-    """Load data from cache using cache_manager"""
-    cache_key = get_cache_key(ticker, interval, period)
-    cached_data = cache_manager.load(cache_key, suffix="pkl")
-    return cached_data.copy() if cached_data is not None else None
-
-def save_to_cache(ticker: str, interval: str, period: str, df: pd.DataFrame):
-    """Save data to cache using cache_manager"""
-    cache_key = get_cache_key(ticker, interval, period)
-    cache_manager.save(cache_key, df, suffix="pkl")
-
-def is_cache_fresh(ticker: str, interval: str, period: str, df: pd.DataFrame = None) -> bool:
-    """
-    Check if cached data is fresh
-    Fresh jika: data hari terakhir >= last trading day
-    """
-    if df is None:
-        # Load from cache first
-        cached = load_cached_data(ticker, interval, period)
-        if cached is None or cached.empty:
-            return False
-        df = cached
-    
-    if df.empty:
-        return False
-    
-    # Get last date from data
-    last_date = df.index[-1].date() if hasattr(df.index[-1], 'date') else df.index[-1]
-    
-    # Get last trading day
-    last_trading_day = date_utils.get_last_trading_day().date()
-    
-    return last_date >= last_trading_day
-
-# ======================================================
-# DATA FETCHING FUNCTIONS
-# ======================================================
-def normalize_yf_df(df: pd.DataFrame, ticker: str = None) -> pd.DataFrame:
-    """
-    Normalize yfinance dataframe safely
-    """
-    if df is None or df.empty:
-        return df
-    
-    # Handle MultiIndex columns
-    if isinstance(df.columns, pd.MultiIndex):
-        if ticker is None:
-            # Use first available ticker
-            available_tickers = df.columns.get_level_values(1).unique()
-            if len(available_tickers) > 0:
-                ticker = available_tickers[0]
-            else:
-                raise ValueError("No tickers found in MultiIndex columns")
-        
-        if ticker in df.columns.get_level_values(1):
-            df = df.xs(ticker, axis=1, level=1)
-        else:
-            raise ValueError(f"Ticker {ticker} not found in dataframe")
-    
-    # Remove duplicate columns
-    df = df.loc[:, ~df.columns.duplicated()]
-    
-    # Ensure proper column names
-    column_map = {
-        'Adj Close': 'Close',
-    }
-    df.rename(columns=column_map, inplace=True)
-    
-    return df
-
-def fetch_data(ticker: str, interval: str = "1d", period: str = "12mo", 
-               force_refresh: bool = False) -> pd.DataFrame:
-    """
-    Fetch data with caching mechanism
-    
-    Returns:
-    --------
-    pd.DataFrame or None
-    """
-    # Check cache first if not forcing refresh
-    if not force_refresh:
-        cached_df = load_cached_data(ticker, interval, period)
-        if cached_df is not None and is_cache_fresh(ticker, interval, period, cached_df):
-            print(f"Using cached data for {ticker}")
-            return cached_df.copy()
-    
-    # Fetch fresh data
-    print(f"Fetching fresh data for {ticker} ({interval}, {period})")
-    df = data_utils.safe_yf_download(ticker, interval, period)
-    
-    if df is None or df.empty:
-        print(f"Failed to fetch data for {ticker}")
-        return None
-    
-    # Normalize dataframe
-    df = normalize_yf_df(df, ticker)
-    
-    # Ensure required columns
-    required_cols = ['Open', 'High', 'Low', 'Close', 'Volume']
-    missing_cols = [col for col in required_cols if col not in df.columns]
-    
-    if missing_cols:
-        print(f"Missing required columns for {ticker}: {missing_cols}")
-        return None
-    
-    # Basic data cleaning
-    df = df[required_cols].copy()
-    df.dropna(inplace=True)
-    
-    # Check if stock is suspended (no volume for last 10 bars)
-    if df['Volume'].iloc[-10:].sum() == 0:
-        print(f"Stock {ticker} appears suspended (no volume)")
-        return None
-    
-    # Save to cache
-    save_to_cache(ticker, interval, period, df)
-    
-    return df
-
-# Di bagian fetch_intraday_safe function, perbaiki:
-def fetch_intraday_safe(
-    ticker: str,
-    interval: str = "1h",
-    period: str = "6mo",
-    min_candles: int = 120,
-    allow_4h_fallback: bool = True
-) -> pd.DataFrame:
-    """
-    Fetch intraday data safely with fallback options
-    """
-    cache_key = f"{get_cache_key(ticker, interval, period)}_intraday"
-    
-    # Check cache first
-    cached_data = cache_manager.load(cache_key, suffix="pkl")
-    if cached_data is not None and not cached_data.empty:
-        # **PERBAIKAN: Simplifikasi cache age check**
-        # Coba cek tanggal terakhir di cache
-        try:
-            last_date = cached_data.index[-1]
-            today = pd.Timestamp.today().date()
-            
-            # Jika cache dari hari yang sama, gunakan cache
-            if hasattr(last_date, 'date'):
-                if last_date.date() == today:
-                    return cached_data.copy()
-            elif isinstance(last_date, str):
-                cache_date = pd.to_datetime(last_date).date()
-                if cache_date == today:
-                    return cached_data.copy()
-        except:
-            pass  # Jika error, tetap fetch data baru
-    
-    try:
-        # Use safe download from utils
-        df = data_utils.safe_yf_download(
-            ticker=ticker,
-            interval=interval,
-            period=period,
-            max_retries=2
-        )
-        
-        if df is None or df.empty:
-            print(f"[INTRADAY EMPTY] {ticker}")
-            
-            # Try fallback to 4H if allowed
-            if interval == "1h" and allow_4h_fallback:
-                print(f"Trying 4H fallback for {ticker}")
-                return fetch_intraday_safe(
-                    ticker, "4h", "3mo", min_candles//4, False
-                )
-            return None
-        
-        # Validate data
-        if len(df) < min_candles:
-            print(f"[INTRADAY TOO SHORT] {ticker} | {len(df)} bars")
-            return None
-        
-        if df["Volume"].iloc[-10:].sum() == 0:
-            print(f"[INTRADAY SUSPENDED] {ticker}")
-            return None
-        
-        # Save to cache
-        cache_manager.save(cache_key, df, suffix="pkl")
-        
-        return df
-        
-    except Exception as e:
-        print(f"[INTRADAY FAIL] {ticker} | {e}")
-        return None
-
-# ======================================================
 # TECHNICAL INDICATORS
 # ======================================================
-def add_indicators(df: pd.DataFrame) -> pd.DataFrame:
+
+def add_indicators(df: pd.DataFrame) -> Optional[pd.DataFrame]:
     """
     Add technical indicators to dataframe
     
+    Args:
+        df: OHLCV dataframe
+    
     Returns:
-    --------
-    pd.DataFrame with indicators added
+        DataFrame with indicators added, or None if failed
     """
     if df is None or df.empty:
         return None
@@ -610,7 +687,7 @@ def add_indicators(df: pd.DataFrame) -> pd.DataFrame:
     )
     
     if not is_valid:
-        print(f"Invalid dataframe for indicators: {error_msg}")
+        print(f"  Invalid dataframe for indicators: {error_msg}")
         return None
     
     try:
@@ -644,7 +721,6 @@ def add_indicators(df: pd.DataFrame) -> pd.DataFrame:
         true_range = pd.concat([tr1, tr2, tr3], axis=1).max(axis=1)
         df["ATR14"] = true_range.rolling(window=14).mean()
         
-        # Additional useful indicators
         # MACD
         exp1 = df["Close"].ewm(span=12, adjust=False).mean()
         exp2 = df["Close"].ewm(span=26, adjust=False).mean()
@@ -671,36 +747,41 @@ def add_indicators(df: pd.DataFrame) -> pd.DataFrame:
         return df
         
     except Exception as e:
-        print(f"Error adding indicators: {e}")
+        print(f"  Error adding indicators: {e}")
         return None
 
 def ema_slope(series: pd.Series, window: int = SLOPE_WINDOW) -> float:
     """
     Calculate EMA slope (rate of change)
     
+    Args:
+        series: EMA series
+        window: Lookback window
+    
     Returns:
-    --------
-    float: Slope value (positive = uptrend, negative = downtrend)
+        Slope value (positive = uptrend, negative = downtrend)
     """
     if series is None or len(series) < window + 1:
         return 0.0
     
     try:
-        # Use simple difference
         return series.iloc[-1] - series.iloc[-window]
-    except:
+    except Exception:
         return 0.0
 
 # ======================================================
 # TREND ANALYSIS
 # ======================================================
+
 def major_trend_daily(df: pd.DataFrame) -> str:
     """
     Determine major trend based on daily timeframe
     
+    Args:
+        df: Dataframe with indicators
+    
     Returns:
-    --------
-    str: "STRONG", "WEAK", or "INVALID"
+        "STRONG", "WEAK", or "INVALID"
     """
     if df is None or len(df) < 50:
         return "INVALID"
@@ -728,19 +809,22 @@ def major_trend_daily(df: pd.DataFrame) -> str:
         return "STRONG"
         
     except Exception as e:
-        print(f"Error in major_trend_daily: {e}")
+        print(f"  Error in major_trend_daily: {e}")
         return "INVALID"
 
 # ======================================================
-# MINOR PHASE ANALYSIS (MBMA Engine)
+# MINOR PHASE ANALYSIS
 # ======================================================
-def minor_phase_4h(df: pd.DataFrame):
+
+def minor_phase_4h(df: pd.DataFrame) -> Tuple[str, List[str], int, int]:
     """
     Determine minor phase based on 4H timeframe (MBMA methodology)
     
+    Args:
+        df: Dataframe with indicators
+    
     Returns:
-    --------
-    tuple: (phase, reasons, confidence, confidence_pct)
+        Tuple of (phase, reasons, confidence, confidence_pct)
     """
     # Input validation
     if df is None or len(df) < max(10, SLOPE_WINDOW) + 1:
@@ -780,25 +864,18 @@ def minor_phase_4h(df: pd.DataFrame):
         ema50_flat = ema_slope(df["EMA50"]) >= -0.001  # Slightly negative is okay
         price_above_ema13 = last["Close"] >= last["EMA13"]
         
-        # =============================
         # 1. EMA COMPRESS PULLBACK
-        # =============================
         if ema_compress:
             reasons.append("EMA13 dan EMA21 dalam fase kompresi (<0.3% distance)")
-            return "EMA_COMPRESS_PULLBACK", reasons, 1, 14  # 1/7 ≈ 14%
+            return "EMA_COMPRESS_PULLBACK", reasons, 1, 14
         
-        # =============================
         # 2. PULLBACK RECOVERED
-        # =============================
         if pullback_recovered:
             reasons.append("Harga kembali menutup di atas EMA21 setelah pullback")
             return "PULLBACK_RECOVERED", reasons, 1, 14
         
-        # =============================
         # 3. TREND CONTINUE
-        # =============================
         if is_bullish and price_above_ema13:
-            # Calculate confidence based on multiple factors
             trend_factors = {
                 "Struktur EMA bullish (13>21>50)": is_bullish,
                 "Harga di atas EMA13": price_above_ema13,
@@ -816,38 +893,40 @@ def minor_phase_4h(df: pd.DataFrame):
             reasons.extend(passed_factors)
             return "TREND_CONTINUE", reasons, confidence, confidence_pct
         
-        # =============================
         # 4. TREND OVEREXTEND
-        # =============================
         dist_ema13 = (last["Close"] - last["EMA13"]) / last["EMA13"]
         dist_ema21 = (last["Close"] - last["EMA21"]) / last["EMA21"]
         dist_ema50 = (last["Close"] - last["EMA50"]) / last["EMA50"]
         
         is_overextended = (
-            dist_ema13 > 0.05 and  # >5% dari EMA13
-            dist_ema21 > 0.10 and  # >10% dari EMA21
-            dist_ema50 > 0.20 and  # >20% dari EMA50
+            dist_ema13 > 0.05 and
+            dist_ema21 > 0.10 and
+            dist_ema50 > 0.20 and
             (last["RSI"] >= 70 or last["STOCH"] >= 85)
         )
         
         if is_overextended:
             reasons.append("Harga terlalu jauh dari EMA support (overextended)")
             reasons.append(f"RSI: {last['RSI']:.1f}, Stoch: {last['STOCH']:.1f}")
-            return "TREND_OVEREXTEND", reasons, 2, 29  # 2/7 ≈ 29%
+            return "TREND_OVEREXTEND", reasons, 2, 29
         
-        # =============================
         # 5. NEUTRAL / NO CLEAR SIGNAL
-        # =============================
         reasons.append("Tidak ada sinyal minor phase yang jelas")
         return "NEUTRAL", reasons, 0, 0
         
     except Exception as e:
-        print(f"Error in minor_phase_4h: {e}")
+        print(f"  Error in minor_phase_4h: {e}")
         return "NEUTRAL", [f"Error: {str(e)}"], 0, 0
 
 def setup_state(minor_phase: str) -> str:
     """
     Determine setup state based on minor phase
+    
+    Args:
+        minor_phase: Minor phase string
+    
+    Returns:
+        Setup state string
     """
     if minor_phase == "EMA_COMPRESS_PULLBACK":
         return "SETUP_PENDING"
@@ -860,6 +939,13 @@ def setup_state(minor_phase: str) -> str:
 def stage2_trigger(df: pd.DataFrame, setup: str) -> bool:
     """
     Check if stage 2 trigger conditions are met
+    
+    Args:
+        df: Dataframe with indicators
+        setup: Setup state
+    
+    Returns:
+        True if trigger conditions met
     """
     if setup != "STAGE2_READY" or df is None or len(df) < 2:
         return False
@@ -867,19 +953,22 @@ def stage2_trigger(df: pd.DataFrame, setup: str) -> bool:
     try:
         last = df.iloc[-1]
         return last["Close"] > last["EMA13"] and ema_slope(df["EMA13"]) > 0
-    except:
+    except Exception:
         return False
 
 # ======================================================
 # VOLUME ANALYSIS
 # ======================================================
-def volume_behavior(df: pd.DataFrame):
+
+def volume_behavior(df: pd.DataFrame) -> Tuple[str, float, float, float]:
     """
     Analyze volume behavior (VSA-inspired)
     
+    Args:
+        df: Dataframe with indicators
+    
     Returns:
-    --------
-    tuple: (behavior, vol_ratio, volume, vol_ma20)
+        Tuple of (behavior, vol_ratio, volume, vol_ma20)
     """
     if df is None or len(df) < 2:
         return "VOL_NEUTRAL", 0.0, 0, 0
@@ -909,10 +998,7 @@ def volume_behavior(df: pd.DataFrame):
         body_ratio = body_size / price_range if price_range > 0 else 0
         vol_ratio = volume / vol_ma20
         
-        # =============================
         # 1. ABSORPTION (Bullish)
-        # Volume tinggi, range kecil, lower wick panjang
-        # =============================
         absorption = (
             vol_ratio >= 1.3 and
             body_ratio <= 0.35 and
@@ -923,10 +1009,7 @@ def volume_behavior(df: pd.DataFrame):
         if absorption:
             return "VOL_ABSORPTION", round(vol_ratio, 2), volume, vol_ma20
         
-        # =============================
         # 2. DISTRIBUTION (Bearish)
-        # Volume tinggi, range kecil, upper wick panjang
-        # =============================
         distribution = (
             vol_ratio >= 1.3 and
             body_ratio <= 0.35 and
@@ -937,10 +1020,7 @@ def volume_behavior(df: pd.DataFrame):
         if distribution:
             return "VOL_DISTRIBUTION", round(vol_ratio, 2), volume, vol_ma20
         
-        # =============================
         # 3. EXPANSION (Strong Move)
-        # Volume tinggi, body besar
-        # =============================
         expansion = (
             vol_ratio >= 1.5 and
             body_ratio >= 0.55
@@ -949,26 +1029,26 @@ def volume_behavior(df: pd.DataFrame):
         if expansion:
             return "VOL_EXPANSION", round(vol_ratio, 2), volume, vol_ma20
         
-        # =============================
         # 4. NEUTRAL (Default)
-        # Semua kondisi lain termasuk volume rendah atau normal
-        # =============================
         return "VOL_NEUTRAL", round(vol_ratio, 2), volume, vol_ma20
         
     except Exception as e:
-        print(f"Error in volume_behavior: {e}")
+        print(f"  Error in volume_behavior: {e}")
         return "VOL_NEUTRAL", 0.0, 0, 0
 
 # ======================================================
 # CANDLE ANALYSIS
 # ======================================================
-def latest_candle_info(df: pd.DataFrame):
+
+def latest_candle_info(df: pd.DataFrame) -> Tuple[str, int, int]:
     """
     Analyze the latest candle
     
+    Args:
+        df: Dataframe with indicators
+    
     Returns:
-    --------
-    tuple: (label, is_red, is_green)
+        Tuple of (label, is_red, is_green)
     """
     if df is None or len(df) < 2:
         return "N/A", 0, 0
@@ -1035,16 +1115,18 @@ def latest_candle_info(df: pd.DataFrame):
             return "Doji/Netral", 0, 0
             
     except Exception as e:
-        print(f"Error in latest_candle_info: {e}")
+        print(f"  Error in latest_candle_info: {e}")
         return "Doji/Netral", 0, 0
 
 def compute_dist_sma50(df: pd.DataFrame) -> float:
     """
     Calculate distance to SMA50 as percentage
     
+    Args:
+        df: Dataframe with indicators
+    
     Returns:
-    --------
-    float: Percentage distance (positive = above, negative = below)
+        Percentage distance (positive = above, negative = below)
     """
     if df is None or len(df) == 0:
         return np.nan
@@ -1059,12 +1141,13 @@ def compute_dist_sma50(df: pd.DataFrame) -> float:
         close = last.get("Close", 0)
         return (close - sma50) / sma50 * 100
         
-    except:
+    except Exception:
         return np.nan
 
 # ======================================================
 # DECISION ENGINE
 # ======================================================
+
 def final_decision(
     major_trend: str,
     minor_phase: str,
@@ -1075,9 +1158,15 @@ def final_decision(
     """
     Make final trading decision based on all factors
     
+    Args:
+        major_trend: Major trend from daily
+        minor_phase: Minor phase from 4H
+        setup_state: Setup state
+        stage2_trigger: Stage 2 trigger status
+        volume_behavior: Volume behavior
+    
     Returns:
-    --------
-    str: Decision string
+        Decision string
     """
     # Basic validation
     if major_trend == "INVALID":
@@ -1105,19 +1194,600 @@ def final_decision(
     return "WAIT"
 
 # ======================================================
-# MAIN STOCK PROCESSING FUNCTION - UPDATED WITH VALUE TRX
+# WYCKOFF PHASE DETECTION
 # ======================================================
-def process_stock(kode: str, use_cache: bool = True, include_value_trx: bool = False):
+
+def add_wyckoff_indicators(df: pd.DataFrame) -> pd.DataFrame:
+    """Add Wyckoff-specific indicators to dataframe"""
+    df = df.copy()
+    
+    # Volume indicators
+    df['Volume_MA20'] = df['Volume'].rolling(20).mean()
+    df['Volume_Ratio'] = df['Volume'] / df['Volume_MA20']
+    
+    # Price position relative to EMAs
+    df['Dist_to_EMA13'] = (df['Close'] - df['EMA13']) / df['EMA13'] * 100
+    df['Dist_to_EMA21'] = (df['Close'] - df['EMA21']) / df['EMA21'] * 100
+    df['Dist_to_EMA50'] = (df['Close'] - df['EMA50']) / df['EMA50'] * 100
+    
+    # EMA alignment
+    df['EMA_Alignment'] = 0
+    df.loc[df['EMA13'] > df['EMA21'], 'EMA_Alignment'] += 1
+    df.loc[df['EMA21'] > df['EMA50'], 'EMA_Alignment'] += 1
+    
+    # Volume trend (up/down volume)
+    df['Volume_Up'] = df['Volume'].where(df['Close'] > df['Open'], 0)
+    df['Volume_Down'] = df['Volume'].where(df['Close'] < df['Open'], 0)
+    
+    # Accumulation/Distribution indicators
+    df['ADI'] = (2*df['Close'] - df['High'] - df['Low']) / (df['High'] - df['Low']) * df['Volume']
+    df['ADI_Cum'] = df['ADI'].cumsum()
+    
+    # Volume price trend
+    df['VPT'] = df['Volume'] * ((df['Close'] - df['Close'].shift(1)) / df['Close'].shift(1))
+    df['VPT_Cum'] = df['VPT'].cumsum()
+    
+    # Money Flow Index
+    typical_price = (df['High'] + df['Low'] + df['Close']) / 3
+    money_flow = typical_price * df['Volume']
+    
+    positive_flow = money_flow.where(typical_price > typical_price.shift(1), 0)
+    negative_flow = money_flow.where(typical_price < typical_price.shift(1), 0)
+    
+    positive_sum = positive_flow.rolling(14).sum()
+    negative_sum = negative_flow.rolling(14).sum()
+    
+    money_ratio = positive_sum / (negative_sum + 1e-9)
+    df['MFI'] = 100 - (100 / (1 + money_ratio))
+    
+    # Detect swing points
+    df['Swing_High'] = (df['High'] > df['High'].shift(1)) & (df['High'] > df['High'].shift(-1))
+    df['Swing_Low'] = (df['Low'] < df['Low'].shift(1)) & (df['Low'] < df['Low'].shift(-1))
+    
+    # Volume trend
+    df['Volume_Trend'] = 'NEUTRAL'
+    df.loc[df['Volume_Ratio'] > 1.3, 'Volume_Trend'] = 'HIGH'
+    df.loc[df['Volume_Ratio'] < 0.7, 'Volume_Trend'] = 'LOW'
+    
+    return df
+
+def detect_springs(df: pd.DataFrame, lookback: int = 30) -> Dict[str, Any]:
     """
-    Process a single stock for screening - DENGAN VALUE TRX OPTIONAL
+    Detect Spring (shakeout) patterns
+    
+    Spring characteristics:
+    1. Break below support
+    2. Quick reversal back above
+    3. Volume spike on breakdown
+    4. Lower wick on reversal
+    """
+    if len(df) < 20:
+        return {'detected': False, 'confidence': 0, 'description': ''}
+    
+    # Find potential support level (previous lows)
+    support_level = df['Low'].iloc[-20:-5].min()
+    
+    # Look for springs in last 10 bars
+    for i in range(1, 11):
+        if i + 2 >= len(df):
+            continue
+        
+        # Check if price broke below support
+        if df['Low'].iloc[-i] < support_level * SPRING_THRESHOLD:
+            
+            # Check if it reversed back above support within 2-3 days
+            if i > 1:
+                days_after = min(3, i - 1)
+                if df['Close'].iloc[-i + days_after] > support_level * 1.01:
+                    
+                    # Check volume confirmation
+                    if df['Volume'].iloc[-i] > df['Volume_MA20'].iloc[-i] * VOLUME_SPIKE_THRESHOLD:
+                        confidence = 8
+                        desc = f"Spring at {df.index[-i].strftime('%Y-%m-%d')}: broke {support_level:,.0f} on high vol, reversed quickly"
+                        return {
+                            'detected': True,
+                            'confidence': confidence,
+                            'description': desc,
+                            'date': df.index[-i],
+                            'support': support_level
+                        }
+    
+    return {'detected': False, 'confidence': 0, 'description': ''}
+
+def detect_upthrusts(df: pd.DataFrame, lookback: int = 30) -> Dict[str, Any]:
+    """
+    Detect Upthrust patterns
+    
+    Upthrust characteristics:
+    1. Break above resistance
+    2. Quick reversal back below
+    3. Volume spike on breakout
+    4. Upper wick on reversal
+    """
+    if len(df) < 20:
+        return {'detected': False, 'confidence': 0, 'description': ''}
+    
+    # Find potential resistance level (previous highs)
+    resistance_level = df['High'].iloc[-20:-5].max()
+    
+    # Look for upthrusts in last 10 bars
+    for i in range(1, 11):
+        if i + 2 >= len(df):
+            continue
+        
+        # Check if price broke above resistance
+        if df['High'].iloc[-i] > resistance_level * UPTHRUST_THRESHOLD:
+            
+            # Check if it reversed back below resistance within 2-3 days
+            if i > 1:
+                days_after = min(3, i - 1)
+                if df['Close'].iloc[-i + days_after] < resistance_level * 0.99:
+                    
+                    # Check volume confirmation
+                    if df['Volume'].iloc[-i] > df['Volume_MA20'].iloc[-i] * VOLUME_SPIKE_THRESHOLD:
+                        confidence = 8
+                        desc = f"Upthrust at {df.index[-i].strftime('%Y-%m-%d')}: broke {resistance_level:,.0f} on high vol, failed"
+                        return {
+                            'detected': True,
+                            'confidence': confidence,
+                            'description': desc,
+                            'date': df.index[-i],
+                            'resistance': resistance_level
+                        }
+    
+    return {'detected': False, 'confidence': 0, 'description': ''}
+
+def detect_accumulation_phase(df: pd.DataFrame) -> Dict[str, Any]:
+    """
+    Phase A / Accumulation: Smart money buying quietly, price sideways
+    """
+    reasons = []
+    confidence = 0
+    max_confidence = 10
+    
+    # 1. Price action: Sideways/trading range
+    price_range_pct = (df['High'].max() - df['Low'].min()) / df['Low'].min() * 100
+    if 10 < price_range_pct < 30:
+        confidence += 2
+        reasons.append(f"Trading range: {price_range_pct:.1f}% (ideal for accumulation)")
+    
+    # 2. Volume: Increasing on dips, decreasing on rallies
+    vol_correlation = 0
+    for i in range(1, 21):
+        if i < len(df):
+            if df['Close'].iloc[-i] < df['Close'].iloc[-i-1]:  # Down day
+                if df['Volume'].iloc[-i] > df['Volume_MA20'].iloc[-i]:
+                    vol_correlation += 1
+    
+    if vol_correlation > 12:
+        confidence += 3
+        reasons.append(f"Volume increases on dips ({vol_correlation}/20 days)")
+    
+    # 3. Support/resistance: Price testing lows with reduced selling
+    recent_lows = df.nsmallest(5, 'Low')
+    avg_vol_at_lows = recent_lows['Volume'].mean()
+    avg_vol_overall = df['Volume'].mean()
+    
+    if avg_vol_at_lows < avg_vol_overall * 0.8:
+        confidence += 2
+        reasons.append("Lows formed on below-average volume (selling drying up)")
+    
+    # 4. Spring detection
+    springs = detect_springs(df)
+    if springs['detected']:
+        confidence += springs['confidence']
+        reasons.append(f"Spring detected: {springs['description']}")
+    
+    # 5. EMA alignment: EMAs flattening/compressing
+    ema13_slope_val = df['EMA13'].diff().iloc[-5:].mean()
+    ema21_slope_val = df['EMA21'].diff().iloc[-5:].mean()
+    
+    if abs(ema13_slope_val) < 0.01 and abs(ema21_slope_val) < 0.01:
+        confidence += 2
+        reasons.append("EMAs flattening (loss of trend momentum)")
+    
+    # 6. MFI/RSI: Often oversold then recovering
+    mfi_avg = df['MFI'].iloc[-10:].mean()
+    if 30 < mfi_avg < 50:
+        confidence += 1
+        reasons.append(f"MFI recovering from oversold: {mfi_avg:.1f}")
+    
+    # Calculate confidence percentage
+    confidence_pct = min(100, int((confidence / max_confidence) * 100))
+    
+    return {
+        'phase': 'ACC',
+        'confidence': confidence_pct,
+        'reasons': reasons
+    }
+
+def detect_markup_phase(df: pd.DataFrame) -> Dict[str, Any]:
+    """
+    Phase B / Markup: Price trending up, volume confirming
+    """
+    last = df.iloc[-1]
+    
+    reasons = []
+    confidence = 0
+    max_confidence = 10
+    
+    # 1. Price action: Higher highs, higher lows
+    hh_count = 0
+    hl_count = 0
+    
+    for i in range(1, 11):
+        if i + 5 < len(df):
+            if df['High'].iloc[-i] > df['High'].iloc[-i-5:].max():
+                hh_count += 1
+            if df['Low'].iloc[-i] > df['Low'].iloc[-i-5:].min():
+                hl_count += 1
+    
+    if hh_count >= 5 and hl_count >= 5:
+        confidence += 3
+        reasons.append(f"Higher highs ({hh_count}/10) and higher lows ({hl_count}/10)")
+    
+    # 2. Volume: Expanding on up days
+    up_volume_ratio = 0
+    for i in range(1, 11):
+        if i < len(df):
+            if df['Close'].iloc[-i] > df['Close'].iloc[-i-1]:  # Up day
+                if df['Volume'].iloc[-i] > df['Volume_MA20'].iloc[-i]:
+                    up_volume_ratio += 1
+    
+    if up_volume_ratio >= 6:
+        confidence += 2
+        reasons.append(f"Volume expands on up days ({up_volume_ratio}/10)")
+    
+    # 3. EMA alignment: Bullish
+    if last['EMA13'] > last['EMA21'] > last['EMA50']:
+        confidence += 2
+        reasons.append("Bullish EMA alignment (13>21>50)")
+    
+    # 4. Price above key EMAs
+    if last['Close'] > last['EMA21']:
+        confidence += 1
+        reasons.append(f"Price above EMA21 ({last['Close']/last['EMA21']-1:.2%})")
+    
+    # 5. Volume expanding overall
+    recent_vol = df['Volume'].iloc[-10:].mean()
+    prior_vol = df['Volume'].iloc[-30:-10].mean() if len(df) > 30 else recent_vol
+    
+    if recent_vol > prior_vol * 1.2:
+        confidence += 1
+        reasons.append("Volume expanding compared to prior period")
+    
+    # 6. MFI confirming
+    if 50 < last.get('MFI', 50) < 80:
+        confidence += 1
+        reasons.append("MFI in bullish zone (50-80)")
+    
+    confidence_pct = min(100, int((confidence / max_confidence) * 100))
+    
+    return {
+        'phase': 'MU',
+        'confidence': confidence_pct,
+        'reasons': reasons
+    }
+
+def detect_distribution_phase(df: pd.DataFrame) -> Dict[str, Any]:
+    """
+    Phase C / Distribution: Smart money selling, price still looks healthy
+    """
+    reasons = []
+    confidence = 0
+    max_confidence = 10
+    
+    # 1. Price action: Long upper wicks
+    wick_count = 0
+    for i in range(1, 11):
+        if i < len(df):
+            candle = df.iloc[-i]
+            body = abs(candle['Close'] - candle['Open'])
+            upper_wick = candle['High'] - max(candle['Close'], candle['Open'])
+            
+            if upper_wick > body * 1.5:
+                wick_count += 1
+    
+    if wick_count >= 5:
+        confidence += 3
+        reasons.append(f"Long upper wicks indicating selling pressure ({wick_count}/10)")
+    
+    # 2. Volume: Increasing on down days
+    down_volume_ratio = 0
+    for i in range(1, 11):
+        if i < len(df):
+            if df['Close'].iloc[-i] < df['Close'].iloc[-i-1]:  # Down day
+                if df['Volume'].iloc[-i] > df['Volume_MA20'].iloc[-i]:
+                    down_volume_ratio += 1
+    
+    if down_volume_ratio >= 6:
+        confidence += 2
+        reasons.append(f"Volume expands on down days ({down_volume_ratio}/10)")
+    
+    # 3. Upthrust detection
+    upthrusts = detect_upthrusts(df)
+    if upthrusts['detected']:
+        confidence += upthrusts['confidence']
+        reasons.append(f"Upthrust detected: {upthrusts['description']}")
+    
+    # 4. Divergence: Price higher but indicators lower
+    if len(df) > 20:
+        price_high_20 = df['High'].iloc[-20:].max()
+        price_high_10 = df['High'].iloc[-10:].max()
+        mfi_20 = df['MFI'].iloc[-20:].max()
+        mfi_10 = df['MFI'].iloc[-10:].max()
+        
+        if price_high_10 >= price_high_20 * 0.98 and mfi_10 < mfi_20 * 0.9:
+            confidence += 2
+            reasons.append("Bearish divergence: Price high but MFI lower")
+    
+    # 5. Volume drying up on rallies
+    recent_up_vol = 0
+    recent_up_days = 0
+    for i in range(1, 11):
+        if i < len(df) and df['Close'].iloc[-i] > df['Close'].iloc[-i-1]:
+            recent_up_vol += df['Volume'].iloc[-i]
+            recent_up_days += 1
+    
+    if recent_up_days > 0:
+        avg_up_vol = recent_up_vol / recent_up_days
+        if avg_up_vol < df['Volume_MA20'].iloc[-1] * 0.8:
+            confidence += 1
+            reasons.append("Rallies on below-average volume")
+    
+    confidence_pct = min(100, int((confidence / max_confidence) * 100))
+    
+    return {
+        'phase': 'DIS',
+        'confidence': confidence_pct,
+        'reasons': reasons
+    }
+
+def detect_markdown_phase(df: pd.DataFrame) -> Dict[str, Any]:
+    """
+    Phase D / Markdown: Price trending down, selling pressure
+    """
+    reasons = []
+    confidence = 0
+    max_confidence = 10
+    
+    # 1. Price action: Lower highs, lower lows
+    lh_count = 0
+    ll_count = 0
+    
+    for i in range(1, 11):
+        if i + 5 < len(df):
+            if df['High'].iloc[-i] < df['High'].iloc[-i-5:].max():
+                lh_count += 1
+            if df['Low'].iloc[-i] < df['Low'].iloc[-i-5:].min():
+                ll_count += 1
+    
+    if lh_count >= 5 and ll_count >= 5:
+        confidence += 3
+        reasons.append(f"Lower highs ({lh_count}/10) and lower lows ({ll_count}/10)")
+    
+    # 2. Volume: High on down days
+    down_volume_ratio = 0
+    for i in range(1, 11):
+        if i < len(df) and df['Close'].iloc[-i] < df['Close'].iloc[-i-1]:
+            if df['Volume'].iloc[-i] > df['Volume_MA20'].iloc[-i] * 1.2:
+                down_volume_ratio += 1
+    
+    if down_volume_ratio >= 5:
+        confidence += 2
+        reasons.append(f"High volume on down days ({down_volume_ratio}/10)")
+    
+    # 3. EMA alignment: Bearish
+    if df['EMA13'].iloc[-1] < df['EMA21'].iloc[-1] < df['EMA50'].iloc[-1]:
+        confidence += 2
+        reasons.append("Bearish EMA alignment (13<21<50)")
+    
+    # 4. Price below key EMAs
+    if df['Close'].iloc[-1] < df['EMA21'].iloc[-1]:
+        confidence += 1
+        reasons.append("Price below EMA21")
+    
+    # 5. No buying absorption
+    absorption_score = 0
+    for i in range(1, 6):
+        if i < len(df):
+            body = abs(df['Close'].iloc[-i] - df['Open'].iloc[-i])
+            lower_wick = min(df['Open'].iloc[-i], df['Close'].iloc[-i]) - df['Low'].iloc[-i]
+            
+            if lower_wick > body * 2:
+                absorption_score += 1
+    
+    if absorption_score <= 2:
+        confidence += 1
+        reasons.append("No significant buying absorption detected")
+    
+    # 6. MFI in oversold but still falling
+    if df['MFI'].iloc[-1] < 30 and df['MFI'].iloc[-1] < df['MFI'].iloc[-5]:
+        confidence += 1
+        reasons.append("MFI in oversold and still declining")
+    
+    confidence_pct = min(100, int((confidence / max_confidence) * 100))
+    
+    return {
+        'phase': 'MD',
+        'confidence': confidence_pct,
+        'reasons': reasons
+    }
+
+def get_historical_phases(df: pd.DataFrame) -> List[Dict[str, Any]]:
+    """
+    Generate historical phase labels for chart overlay
+    Returns list of dict with date ranges and phases
+    """
+    phases_history = []
+    
+    if len(df) < 30:
+        return phases_history
+    
+    # Gunakan window yang lebih kecil untuk deteksi yang lebih sensitif
+    min_phase_days = 5  # Minimal 5 hari untuk sebuah fase (sebelumnya lebih panjang)
+    
+    current_phase = 'UNKNOWN'
+    phase_start = df.index[0]
+    
+    for i in range(len(df)):
+        date = df.index[i]
+        
+        if i > 5:  # Mulai deteksi setelah 5 hari (sebelumnya 10)
+            # Ambil data untuk analisis
+            lookback = min(10, i)
+            recent_df = df.iloc[i-lookback:i+1]
+            
+            # Deteksi fase berdasarkan multiple faktor
+            phase = detect_phase_at_point(recent_df)
+            
+            if phase != 'UNKNOWN':
+                if phase != current_phase:
+                    # Simpan fase sebelumnya
+                    if current_phase != 'UNKNOWN' and current_phase != phase:
+                        days_in_phase = (df.index[i-1] - phase_start).days
+                        if days_in_phase >= min_phase_days:
+                            phases_history.append({
+                                'phase': current_phase,
+                                'start': phase_start,
+                                'end': df.index[i-1],
+                                'days': days_in_phase
+                            })
+                    # Mulai fase baru
+                    current_phase = phase
+                    phase_start = date
+    
+    # Tambahkan fase terakhir
+    if current_phase != 'UNKNOWN':
+        days_in_phase = (df.index[-1] - phase_start).days
+        if days_in_phase >= min_phase_days:
+            phases_history.append({
+                'phase': current_phase,
+                'start': phase_start,
+                'end': df.index[-1],
+                'days': days_in_phase
+            })
+    
+    return phases_history
+
+
+def detect_phase_at_point(df_slice: pd.DataFrame) -> str:
+    """
+    Detect Wyckoff phase at a specific point in time
+    """
+    if len(df_slice) < 5:
+        return 'UNKNOWN'
+    
+    last = df_slice.iloc[-1]
+    
+    # 1. Cek Accumulation
+    vol_decreasing = df_slice['Volume'].iloc[-3:].mean() < df_slice['Volume'].iloc[:3].mean() * 0.8
+    price_range_small = (df_slice['High'].max() - df_slice['Low'].min()) / df_slice['Low'].min() < 0.05
+    ema_flat = abs(df_slice['EMA13'].diff().mean()) < 0.005
+    
+    if price_range_small and vol_decreasing and ema_flat:
+        return 'ACC'
+    
+    # 2. Cek Markup
+    price_up = df_slice['Close'].pct_change().mean() > 0.005
+    vol_increasing = df_slice['Volume'].iloc[-3:].mean() > df_slice['Volume'].iloc[:3].mean() * 1.2
+    ema_bullish = last['EMA13'] > last['EMA21'] > last['EMA50']
+    
+    if price_up and vol_increasing and ema_bullish:
+        return 'MU'
+    
+    # 3. Cek Distribution
+    long_upper_wick = (last['High'] - max(last['Close'], last['Open'])) > (abs(last['Close'] - last['Open']) * 1.5)
+    vol_high = last['Volume'] > df_slice['Volume_MA20'].iloc[-1] * 1.3
+    
+    if long_upper_wick and vol_high:
+        return 'DIS'
+    
+    # 4. Cek Markdown
+    price_down = df_slice['Close'].pct_change().mean() < -0.005
+    vol_high_down = last['Volume'] > df_slice['Volume_MA20'].iloc[-1] * 1.2
+    ema_bearish = last['EMA13'] < last['EMA21'] < last['EMA50']
+    
+    if price_down and (vol_high_down or ema_bearish):
+        return 'MD'
+    
+    return 'UNKNOWN'
+
+def detect_wyckoff_phase(df: pd.DataFrame, lookback: int = 50) -> Dict[str, Any]:
+    """
+    Detect Wyckoff phases (ACC, MU, DIS, MD) based on price structure and volume
+    """
+    if df is None or len(df) < lookback:
+        return {
+            'phase': 'UNKNOWN',
+            'confidence': 0,
+            'reasons': ['Insufficient data'],
+            'phases_history': [],
+            'price_range': {'low': 0, 'high': 0},  # FIXED: Always include both keys
+            'duration': 0
+        }
+    
+    # Use last 'lookback' bars
+    df_analysis = df.iloc[-lookback:].copy()
+    
+    # Calculate additional Wyckoff-specific indicators
+    df_analysis = add_wyckoff_indicators(df_analysis)
+    
+    # Detect phases
+    phase_results = [
+        detect_accumulation_phase(df_analysis),
+        detect_markup_phase(df_analysis),
+        detect_distribution_phase(df_analysis),
+        detect_markdown_phase(df_analysis)
+    ]
+    
+    # Find the phase with highest confidence
+    best_phase = max(phase_results, key=lambda x: x['confidence'])
+    
+    # Get historical phases for chart overlay
+    phases_history = get_historical_phases(df_analysis)
+    
+    # Safe price range calculation - FIXED: Always provide both keys
+    try:
+        price_low = float(df_analysis['Low'].min()) if not df_analysis.empty and 'Low' in df_analysis.columns else 0
+        price_high = float(df_analysis['High'].max()) if not df_analysis.empty and 'High' in df_analysis.columns else 0
+    except (ValueError, TypeError):
+        price_low = 0
+        price_high = 0
+    
+    return {
+        'phase': best_phase['phase'],
+        'confidence': best_phase['confidence'],
+        'reasons': best_phase['reasons'],
+        'phases_history': phases_history,
+        'price_range': {  # FIXED: Always include both keys
+            'low': price_low,
+            'high': price_high
+        },
+        'duration': len(df_analysis),
+        'volume_trend': df_analysis['Volume_Trend'].iloc[-1] if 'Volume_Trend' in df_analysis.columns and not df_analysis.empty else 'NEUTRAL',
+        'supply_demand': 0
+    }
+
+# ======================================================
+# MAIN STOCK PROCESSING FUNCTION
+# ======================================================
+
+def process_stock(
+    kode: str, 
+    use_cache: bool = True, 
+    include_value_trx: bool = False
+) -> Optional[Dict[str, Any]]:
+    """
+    Process a single stock for screening
     
     Args:
-        kode: Kode saham (contoh: "BBCA")
-        use_cache: Gunakan cache untuk data
-        include_value_trx: Include value trx calculation (default: False)
+        kode: Stock code (e.g., "BBCA")
+        use_cache: Use cache for data
+        include_value_trx: Include value transaction calculation
     
     Returns:
-        dict: Stock analysis results or None if failed
+        Dictionary with stock analysis results or None if failed
     """
     ticker = f"{kode}.JK"
     
@@ -1129,6 +1799,7 @@ def process_stock(kode: str, use_cache: bool = True, include_value_trx: bool = F
         # =========================
         sector_info = get_sector_info(ticker, use_cache=use_cache)
         d1 = fetch_data(ticker, "1d", "12mo", force_refresh=not use_cache)
+        
         if d1 is None or d1.empty:
             print(f"  No daily data for {kode}")
             return None
@@ -1152,14 +1823,14 @@ def process_stock(kode: str, use_cache: bool = True, include_value_trx: bool = F
         value_trx_metrics = {}
         if include_value_trx:
             print(f"  Calculating value trx for {kode}...")
-            # **PERBAIKAN: Gunakan tanggal terakhir dari data daily**
+            
             if not d1.empty:
                 last_trading_date = d1.index[-1].strftime("%Y-%m-%d")
                 value_trx_metrics = get_value_trx_metrics(
                     ticker=ticker,
                     df_daily=d1,
                     use_1m_preferred=True,
-                    date=last_trading_date  # Gunakan tanggal terakhir dari data
+                    date=last_trading_date
                 )
             else:
                 value_trx_metrics = get_value_trx_metrics(
@@ -1170,12 +1841,26 @@ def process_stock(kode: str, use_cache: bool = True, include_value_trx: bool = F
                 )
         
         # =========================
-        # 4. MAJOR TREND
+        # 4. WYCKOFF DETECTION
+        # =========================
+        try:
+            wyckoff_result = detect_wyckoff_phase(d1, lookback=WYCKOFF_LOOKBACK)
+        except Exception as e:
+            print(f"  Wyckoff detection failed: {e}")
+            wyckoff_result = {
+                'phase': 'UNKNOWN',
+                'confidence': 0,
+                'reasons': [f'Detection error: {str(e)}'],
+                'phases_history': []
+            }
+        
+        # =========================
+        # 5. MAJOR TREND
         # =========================
         major = major_trend_daily(d1)
         
         # =========================
-        # 5. MINOR PHASE (try intraday first)
+        # 6. MINOR PHASE (try intraday first)
         # =========================
         minor = "NEUTRAL"
         why = []
@@ -1207,18 +1892,18 @@ def process_stock(kode: str, use_cache: bool = True, include_value_trx: bool = F
             stage2 = stage2_trigger(d1, setup)
         
         # =========================
-        # 6. VOLUME ANALYSIS
+        # 7. VOLUME ANALYSIS
         # =========================
         vol_behavior, vol_ratio, volume, vol_ma20 = volume_behavior(d1)
         
         # =========================
-        # 7. CANDLE ANALYSIS
+        # 8. CANDLE ANALYSIS
         # =========================
         candle_label, candle_red, candle_green = latest_candle_info(d1)
         candle_effect = 1 if candle_green else -1 if candle_red else 0
         
         # =========================
-        # 8. PRICE METRICS
+        # 9. PRICE METRICS
         # =========================
         last_idx = len(d1) - 1
         price_today = float(d1["Close"].iloc[last_idx])
@@ -1237,9 +1922,8 @@ def process_stock(kode: str, use_cache: bool = True, include_value_trx: bool = F
         dist_to_sma50 = compute_dist_sma50(d1)
         
         # =========================
-        # 9. CONFIDENCE ADJUSTMENTS
+        # 10. CONFIDENCE ADJUSTMENTS
         # =========================
-        # Boost confidence for favorable conditions
         if minor == "TREND_CONTINUE":
             if vol_behavior in ["VOL_ABSORPTION", "VOL_EXPANSION"]:
                 confidence += 1
@@ -1249,10 +1933,10 @@ def process_stock(kode: str, use_cache: bool = True, include_value_trx: bool = F
                 confidence += 1
                 why.append("Impulse candle terdeteksi")
         
-        # Tambah confidence jika value trx tinggi (likuiditas bagus)
+        # Tambah confidence jika value trx tinggi
         if include_value_trx and value_trx_metrics:
             value_trx_b = value_trx_metrics.get('total_value_b', 0)
-            if value_trx_b > 5:  # Lebih dari 5 miliar
+            if value_trx_b > 5:
                 confidence += 1
                 why.append(f"Likuiditas tinggi ({value_trx_b:.1f}B)")
         
@@ -1260,33 +1944,38 @@ def process_stock(kode: str, use_cache: bool = True, include_value_trx: bool = F
         confidence_pct = round((confidence / 7) * 100) if 7 > 0 else 0
         
         # =========================
-        # 10. FINAL DECISION
+        # 11. FINAL DECISION
         # =========================
         final_dec = final_decision(major, minor, setup, stage2, vol_behavior)
         
         # =========================
-        # 11. VALIDATION GUARDS
+        # 12. VALIDATION GUARDS
         # =========================
         if not validation_utils.validate_price_data(price_today):
             print(f"  Invalid price for {kode}: {price_today}")
             return None
         
-        if price_today > 1_000_000:  # Unrealistic price for IDX
+        if price_today > 1_000_000:
             print(f"  Suspicious price for {kode}: {price_today}")
             return None
         
         # =========================
-        # 12. RETURN RESULTS - WITH OPTIONAL VALUE TRX
+        # 13. BUILD RESULT
         # =========================
         result = {
+            # Basic Info
             "Kode": kode,
-            "Sector": sector_info.get('sector', 'Unknown'),  
+            "Sector": sector_info.get('sector', 'Unknown'),
             "Industry": sector_info.get('industry', 'Unknown'),
+            
+            # Price Metrics
             "Price": price_today,
             "PriceChange%": price_change,
             "Gap_EMA13%": gap_ema13,
             "Gap_EMA21%": gap_ema21,
             "Gap_EMA50%": gap_ema50,
+            
+            # Trend Analysis
             "MajorTrend": major,
             "MinorPhase": minor,
             "WHY_MINOR": why,
@@ -1294,26 +1983,46 @@ def process_stock(kode: str, use_cache: bool = True, include_value_trx: bool = F
             "MinorConfidence%": confidence_pct,
             "SetupState": setup,
             "Stage2Valid": stage2,
+            
+            # Volume Analysis
             "Volume": volume,
             "Vol_20MA": vol_ma20,
             "VOL_BEHAVIOR": vol_behavior,
             "VOL_RATIO": vol_ratio,
+            
+            # Technical Indicators
             "RSI": round(rsi, 2),
             "SMA50": round(sma50, 2),
             "Dist_to_SMA50": round(dist_to_sma50, 2) if not np.isnan(dist_to_sma50) else np.nan,
             "Stoch_K": round(stoch, 2),
+            
+            # Candle Analysis
             "Latest_Candle": candle_label,
             "Candle_Effect": candle_effect,
+            
+            # Final Decision
             "FinalDecision": final_dec,
+            
+            # Wyckoff Analysis
+            "Wyckoff_Phase": wyckoff_result.get('phase', 'UNKNOWN'),
+            "Wyckoff_Confidence": wyckoff_result.get('confidence', 0),
+            "Wyckoff_Reasons": wyckoff_result.get('reasons', []),
+            "Wyckoff_History": wyckoff_result.get('phases_history', []),
+            "Wyckoff_Price_Range": wyckoff_result.get('price_range', {'low': 0, 'high': 0}),
+            "Wyckoff_Duration": wyckoff_result.get('duration', 0),
+            "Spring_Detected": any('spring' in r.lower() for r in wyckoff_result.get('reasons', [])),
+            "Upthrust_Detected": any('upthrust' in r.lower() for r in wyckoff_result.get('reasons', [])),
+            
+            # Metadata
             "ProcessTimestamp": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S")
         }
         
-        # Tambahkan value trx metrics jika diminta
+        # Add value transaction metrics if requested
         if include_value_trx and value_trx_metrics:
             result.update({
                 "ValueTrx": value_trx_metrics.get('total_value', 0),
                 "ValueTrx_Rp": value_trx_metrics.get('total_value_rp', 'Rp 0'),
-                # "ValueTrx_B": value_trx_metrics.get('total_value_b', 0),
+                "ValueTrx_B": value_trx_metrics.get('total_value_b', 0),
                 "VWAP": round(value_trx_metrics.get('vwap', 0), 2),
                 "AvgPrice": round(value_trx_metrics.get('avg_price', 0), 2),
                 "ValueTrx_Volume": value_trx_metrics.get('volume_total', 0),
@@ -1322,9 +2031,8 @@ def process_stock(kode: str, use_cache: bool = True, include_value_trx: bool = F
                 "ValueTrx_Status": value_trx_metrics.get('status', 'UNKNOWN')
             })
         
-        print(f"  ✓ Processed {kode}: {major}/{minor}/{final_dec}")
+        print(f"  ✓ Processed {kode}: {major}/{minor}/{final_dec} | Wyckoff: {result['Wyckoff_Phase']}")
         
-        # Tambahkan log value trx jika ada
         if include_value_trx and value_trx_metrics.get('total_value', 0) > 0:
             print(f"    Value Trx: {value_trx_metrics.get('total_value_rp', 'Rp 0')}")
         
@@ -1335,22 +2043,26 @@ def process_stock(kode: str, use_cache: bool = True, include_value_trx: bool = F
         return None
 
 # ======================================================
-# BATCH PROCESSING WITH VALUE TRX OPTIONAL
+# BATCH PROCESSING FUNCTIONS
 # ======================================================
-def batch_process_stocks(stock_list: list, include_value_trx: bool = False) -> pd.DataFrame:
+
+def batch_process_stocks(
+    stock_list: List[str], 
+    include_value_trx: bool = False
+) -> pd.DataFrame:
     """
     Process multiple stocks in batch mode
     
     Args:
         stock_list: List of stock codes
-        include_value_trx: Include value trx calculation (default: False)
+        include_value_trx: Include value transaction calculation
     
     Returns:
-        pd.DataFrame: Results dataframe
+        DataFrame with results
     """
     results = []
     
-    print(f"Batch processing {len(stock_list)} stocks...")
+    print(f"\nBatch processing {len(stock_list)} stocks...")
     print(f"Include Value Trx: {include_value_trx}")
     print("=" * 60)
     
@@ -1370,10 +2082,10 @@ def batch_process_stocks(stock_list: list, include_value_trx: bool = False) -> p
     if results:
         df_results = pd.DataFrame(results)
         
-        # Sort by Value Trx jika ada
+        # Sort by Value Trx if available
         if include_value_trx and "ValueTrx_B" in df_results.columns:
             df_results = df_results.sort_values("ValueTrx_B", ascending=False)
-            print(f"\nTop 5 by Value Trx:")
+            print(f"\n\nTop 5 by Value Trx:")
             for _, row in df_results.head().iterrows():
                 print(f"  {row['Kode']}: {row.get('ValueTrx_Rp', 'Rp 0')}")
         
@@ -1384,13 +2096,17 @@ def batch_process_stocks(stock_list: list, include_value_trx: bool = False) -> p
 # ======================================================
 # MARKET STATE EXTRACTION
 # ======================================================
-def extract_market_state(df: pd.DataFrame, idx: int) -> dict:
+
+def extract_market_state(df: pd.DataFrame, idx: int) -> Dict[str, Any]:
     """
     Extract market state at historical index
     
+    Args:
+        df: DataFrame with indicators
+        idx: Historical index
+    
     Returns:
-    --------
-    dict: Market state parameters
+        Dictionary with market state parameters
     """
     if df is None or idx < 0 or idx >= len(df):
         return {}
@@ -1445,48 +2161,55 @@ def extract_market_state(df: pd.DataFrame, idx: int) -> dict:
         }
         
     except Exception as e:
-        print(f"Error extracting market state at index {idx}: {e}")
+        print(f"  Error extracting market state at index {idx}: {e}")
         return {}
 
 # ======================================================
 # MAIN EXECUTION GUARD
 # ======================================================
+
 if __name__ == "__main__":
     # Test the engine
     test_codes = ["BBCA", "BBRI", "TLKM"]
     
-    print("Testing engine_v2.py")
-    print("=" * 50)
+    print("=" * 60)
+    print("TESTING ENGINE V2")
+    print("=" * 60)
     
-    # Test tanpa value trx (default)
-    print("\n--- Test tanpa Value Trx ---")
-    for kode in test_codes[:2]:
-        print(f"\nProcessing {kode}...")
+    # Test without value trx
+    print("\n📊 TEST WITHOUT VALUE TRX")
+    print("-" * 40)
+    
+    for kode in test_codes:
+        print(f"\n🔍 Processing {kode}...")
         result = process_stock(kode, use_cache=True, include_value_trx=False)
         
         if result:
-            print(f"  Price: {result['Price']:,}")
-            print(f"  Major Trend: {result['MajorTrend']}")
-            print(f"  Minor Phase: {result['MinorPhase']}")
-            print(f"  Final Decision: {result['FinalDecision']}")
-            print(f"  RSI: {result['RSI']}, Stoch: {result['Stoch_K']}")
+            print(f"  ✅ Price: {result['Price']:,.0f}")
+            print(f"  ✅ Major Trend: {result['MajorTrend']}")
+            print(f"  ✅ Minor Phase: {result['MinorPhase']}")
+            print(f"  ✅ Final Decision: {result['FinalDecision']}")
+            print(f"  ✅ Wyckoff Phase: {result['Wyckoff_Phase']} ({result['Wyckoff_Confidence']}%)")
         else:
-            print(f"  Failed to process {kode}")
+            print(f"  ❌ Failed to process {kode}")
     
-    # Test dengan value trx
-    print("\n\n--- Test dengan Value Trx ---")
-    for kode in test_codes[:2]:
-        print(f"\nProcessing {kode} with value trx...")
+    # Test with value trx
+    print("\n\n💰 TEST WITH VALUE TRX")
+    print("-" * 40)
+    
+    for kode in test_codes:
+        print(f"\n🔍 Processing {kode} with value trx...")
         result = process_stock(kode, use_cache=True, include_value_trx=True)
         
         if result:
-            print(f"  Price: {result['Price']:,}")
-            print(f"  Major Trend: {result['MajorTrend']}")
+            print(f"  ✅ Price: {result['Price']:,.0f}")
+            print(f"  ✅ Major Trend: {result['MajorTrend']}")
             if 'ValueTrx_Rp' in result:
-                print(f"  Value Trx: {result['ValueTrx_Rp']}")
-                print(f"  Method: {result.get('ValueTrx_Method', 'N/A')}")
+                print(f"  ✅ Value Trx: {result['ValueTrx_Rp']}")
+                print(f"  ✅ Method: {result.get('ValueTrx_Method', 'N/A')}")
         else:
-            print(f"  Failed to process {kode}")
+            print(f"  ❌ Failed to process {kode}")
     
-    print("\n" + "=" * 50)
-    print("Engine test completed")
+    print("\n" + "=" * 60)
+    print("✅ ENGINE TEST COMPLETED")
+    print("=" * 60)
